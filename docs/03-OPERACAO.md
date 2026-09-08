@@ -2,25 +2,25 @@
 
 ## Princípio desta fundação
 
-Os arquivos Compose são especificação futura. A validação usa exclusivamente `docker compose config`; não cria containers, redes ou volumes. O primeiro start exige revisão humana, preenchimento seguro de `.env`, imagem Hermes aprovada e janela de mudança.
+O Compose inicia somente o núcleo por padrão. O Hermes está atrás do profile explícito `hermes-disabled` e não integra esta fase. Toda implantação segue `docs/runbooks/DEPLOY.md` e registra o inventário anterior para provar que outros projetos permaneceram intactos.
 
 ## Migrações
 
-Arquivos em `database/migrations` são numerados, imutáveis e executados em ordem. A migração inicial é idempotente onde tecnicamente apropriado, roda em transação, habilita `vector` e `pgcrypto`, cria o schema e registra a própria versão. Em banco novo, o entrypoint do PostgreSQL executa os scripts. Em banco existente, um executor dedicado de migrations deverá controlar lock, checksum e registro; não se deve depender novamente do entrypoint.
+Arquivos em `database/migrations` são numerados, imutáveis e executados em ordem. `scripts/apply-migrations.sh` chama um executor efêmero dedicado. Ele usa advisory lock, checksum SHA-256, transação por arquivo e registro em `schema_migrations`. O entrypoint do PostgreSQL não recebe migrations da aplicação.
 
 Antes de migrar: obter backup lógico consistente, conferir espaço, validar restore em ambiente isolado e registrar versão. Em falha, preservar evidência e restaurar somente segundo runbook aprovado. Nunca editar uma migration aplicada.
 
 ## Saúde e observabilidade
 
-`live` verifica o processo; `ready` testa alcance TCP de PostgreSQL e Redis sem imprimir credenciais. Logs são JSON em stdout. Métricas, tracing e alertas são gates antes de uso real.
+`live` verifica o processo; `ready` executa consultas autenticadas no PostgreSQL e Redis sem imprimir credenciais. O healthcheck do worker também consulta Tika. Logs são JSON em stdout. Métricas, tracing e alertas continuam pendentes antes de uso real.
 
 ## Backup e rollback
 
 - PostgreSQL: dump lógico criptografado, retenção definida e teste periódico de restauração.
-- Redis: AOF no volume exclusivo; não é fonte definitiva de dados acadêmicos.
+- Redis: sem AOF ou snapshots; o volume nomeado runtime apenas substitui o `VOLUME /data` declarado pela imagem e não oferece persistência lógica. Fila e locks são reconstruíveis; PostgreSQL é a fonte definitiva.
 - Hermes e documentos: backup separado, criptografado, sem compartilhamento com outras instâncias.
 - Aplicação: imagens imutáveis e retorno à versão anterior; banco avança por migrations corretivas.
 
 ## Validação e implantação futura
 
-Execute `./scripts/validate-foundation.sh`. Depois, revise o Compose renderizado sem gravar segredos. A implantação futura deve conferir consumo da VPS, coexistência com serviços intocáveis, nomes exclusivos e ausência de portas publicadas. Comandos que iniciam ou alteram containers estão deliberadamente fora desta fase.
+Execute `./scripts/validate-foundation.sh`. Depois, revise o Compose renderizado sem gravar segredos. Confira consumo da VPS, coexistência com serviços intocáveis, nomes exclusivos e ausência de portas publicadas. Backup e restauração seguem o runbook dedicado.

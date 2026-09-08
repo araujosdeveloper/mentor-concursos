@@ -7,20 +7,35 @@ required=(
   README.md AGENTS.md .gitignore .dockerignore .editorconfig .env.example pyproject.toml
   docker-compose.yml apps/api/Dockerfile apps/worker/Dockerfile apps/api/src/__init__.py
   apps/api/src/main.py apps/api/src/config.py apps/api/src/health.py apps/worker/src/__init__.py
-  apps/worker/src/main.py database/migrations/001_extensions_and_schema.sql
-  tests/unit/test_health.py docs/00-PLANO-MESTRE.md docs/01-ARQUITETURA.md
+  apps/api/src/auth.py apps/api/src/dependencies.py apps/api/src/internal.py
+  apps/api/entrypoint.sh
+  apps/worker/src/main.py apps/migrations/main.py database/migrations/001_extensions_and_schema.sql
+  scripts/prepare-production-env.sh scripts/apply-migrations.sh tests/unit/test_health.py
+  tests/unit/test_auth.py docs/00-PLANO-MESTRE.md docs/01-ARQUITETURA.md
   docs/02-SEGURANCA.md docs/03-OPERACAO.md docs/adr/ADR-001-isolamento-hermes.md
-  docs/adr/ADR-002-banco-dedicado.md .github/workflows/validate.yml
+  docs/adr/ADR-002-banco-dedicado.md docs/adr/ADR-003-imagem-hermes.md
+  docs/adr/ADR-004-autenticacao-servico.md docs/04-INVENTARIO-IMAGENS.md
+  docs/runbooks/DEPLOY.md docs/runbooks/BACKUP-RESTORE.md tests/integration/verify-core.sh
+  .github/workflows/validate.yml
 )
 
 for path in "${required[@]}"; do
   test -f "$path" || { echo "FAIL arquivo ausente: $path" >&2; exit 1; }
 done
 
-test ! -e .env || { echo "FAIL .env real existe" >&2; exit 1; }
 if git ls-files --error-unmatch .env >/dev/null 2>&1; then
   echo "FAIL .env rastreado" >&2
   exit 1
+fi
+if [[ -e .env && "$(stat -c '%a' .env)" != "600" ]]; then
+  echo "FAIL .env deve ter permissão 600" >&2
+  exit 1
+fi
+if [[ -e secrets ]]; then
+  [[ "$(stat -c '%a' secrets)" == "700" ]] || { echo "FAIL secrets deve ser 700" >&2; exit 1; }
+  while IFS= read -r secret; do
+    [[ "$(stat -c '%a' "$secret")" == "600" ]] || { echo "FAIL secret deve ser 600" >&2; exit 1; }
+  done < <(find secrets -maxdepth 1 -type f)
 fi
 
 python3 -m compileall -q apps tests
@@ -44,7 +59,6 @@ compose_env=(
   POSTGRES_USER=validation_user
   POSTGRES_PASSWORD=validation-only-not-a-secret
   REDIS_PASSWORD=validation-only-not-a-secret
-  HERMES_IMAGE=registry.example.invalid/hermes-agent:0.0.0@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 )
 env "${compose_env[@]}" docker compose config --quiet
 rendered="$(env "${compose_env[@]}" docker compose config)"
@@ -61,11 +75,17 @@ if grep -Eq 'network_mode:[[:space:]]*host|privileged:[[:space:]]*true' docker-c
   echo "FAIL configuração insegura de container" >&2
   exit 1
 fi
+grep -Eq 'mentor-concursos-hermes:' docker-compose.yml
+grep -Eq 'profiles:[[:space:]]*\[hermes-disabled\]' docker-compose.yml
+if grep -Eq '^    image: .*:latest([@[:space:]]|$)' docker-compose.yml; then
+  echo "FAIL tag latest encontrada" >&2
+  exit 1
+fi
 
 tracked_storage="$(git ls-files storage/inbox storage/processed | grep -vE '/\.gitkeep$' || true)"
 test -z "$tracked_storage" || { echo "FAIL conteúdo de storage rastreado" >&2; exit 1; }
 
-if rg --hidden --glob '!.git/**' --glob '!.env.example' \
+if rg --hidden --glob '!.git/**' --glob '!.env' --glob '!secrets/**' --glob '!.env.example' \
   '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' .; then
   echo "FAIL possível segredo detectado" >&2
   exit 1

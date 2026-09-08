@@ -1,3 +1,3 @@
 # Hermes dedicado
 
-Este diretório receberá a configuração da instância isolada do Hermes Agent. A imagem não é presumida pela fundação: `HERMES_IMAGE` deve apontar para uma versão aprovada e um digest imutável antes da implantação. O serviço possui volume e rede próprios e alcança somente a API interna.
+Este diretório receberá configurações adicionais da instância isolada do Hermes Agent. A imagem observada foi registrada por RepoDigest no Compose e na ADR-003. O serviço está desativado pelo profile `hermes-disabled`, possui volume e rede próprios e alcançará somente a API interna após uma fase futura de ativação explícita.

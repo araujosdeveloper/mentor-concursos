@@ -2,7 +2,7 @@
 
 Fundação versionada de um agente pessoal para a preparação de Roberto Araujo em concursos das áreas administrativa, fiscal e de tribunais. A matéria piloto é Direito Administrativo.
 
-Este repositório contém apenas a base técnica: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika e o contrato de isolamento para uma futura instância dedicada do Hermes Agent. Nenhuma regra acadêmica foi implementada nesta fase.
+Este repositório contém o núcleo técnico: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika e o contrato de isolamento para uma futura instância dedicada do Hermes Agent. Nenhuma regra acadêmica foi implementada nesta fase.
 
 ## Requisitos
 
@@ -19,12 +19,19 @@ python3.12 -m venv .venv
 .venv/bin/ruff check .
 ```
 
-Copie `.env.example` para `.env` somente no ambiente de implantação e substitua todos os placeholders por segredos exclusivos. O `.env` real nunca deve ser versionado.
+Prepare os segredos locais de forma idempotente, sem exibi-los:
+
+```bash
+./scripts/prepare-production-env.sh
+```
+
+O `.env` e `secrets/` reais nunca devem ser versionados. Consulte o [runbook de implantação](docs/runbooks/DEPLOY.md) antes de iniciar o núcleo.
 
 ## API
 
 - `GET /api/health/live`: confirma que o processo responde.
-- `GET /api/health/ready`: confirma conectividade TCP com PostgreSQL e Redis.
+- `GET /api/health/ready`: confirma consultas autenticadas no PostgreSQL e Redis.
+- `GET /api/internal/auth-check`: valida o Bearer token de serviço vindo de Docker secret.
 
 A porta `8080` é exposta apenas dentro das redes Docker, nunca publicada no host. O Hermes alcança somente a API pela rede de agente e não possui rota para banco, Redis ou Tika.
 
@@ -34,7 +41,7 @@ A porta `8080` é exposta apenas dentro das redes Docker, nunca publicada no hos
 ./scripts/validate-foundation.sh
 ```
 
-O script verifica arquivos, Python, testes e lint quando as ferramentas estão disponíveis, renderiza o Compose sem iniciar serviços e aplica verificações de isolamento e higiene. Consulte [docs/03-OPERACAO.md](docs/03-OPERACAO.md) antes de qualquer implantação.
+O script verifica arquivos, Python, testes e lint quando as ferramentas estão disponíveis, renderiza o Compose sem iniciar serviços e aplica verificações de isolamento e higiene.
 
 ## Documentação
 
@@ -44,3 +51,6 @@ O script verifica arquivos, Python, testes e lint quando as ferramentas estão d
 - [Operação](docs/03-OPERACAO.md)
 - [ADR-001: isolamento do Hermes](docs/adr/ADR-001-isolamento-hermes.md)
 - [ADR-002: banco dedicado](docs/adr/ADR-002-banco-dedicado.md)
+- [Inventário de imagens](docs/04-INVENTARIO-IMAGENS.md)
+- [Runbook de implantação](docs/runbooks/DEPLOY.md)
+- [Runbook de backup e restauração](docs/runbooks/BACKUP-RESTORE.md)

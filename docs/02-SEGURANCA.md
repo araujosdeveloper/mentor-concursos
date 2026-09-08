@@ -8,7 +8,7 @@ Nenhuma porta é publicada no host. As redes Compose são internas. Não há Tra
 
 ## Segredos e dados
 
-`.env.example` contém somente placeholders. O `.env` real fica fora do Git com permissões mínimas. Logs não podem conter tokens, senhas, conteúdo integral de documentos ou dados pessoais desnecessários. `auth.json`, tokens, bancos locais, uploads, documentos, backups e logs são bloqueados pelo `.gitignore`.
+`.env.example` contém somente placeholders. O `.env` real usa modo 600; `secrets/` usa 700 e seus arquivos usam 600. O token da API tem ao menos 256 bits. O Docker secret host permanece 600; um entrypoint mínimo, executado como root, copia-o para `/run/secrets/mentor_api_service_token` em modo 400 e transfere o processo imediatamente para UID/GID 10001. A API compara em tempo constante e nunca registra o valor. Logs não podem conter tokens, senhas, conteúdo integral de documentos ou dados pessoais desnecessários. `auth.json`, tokens, bancos locais, uploads, documentos, backups e logs são bloqueados pelo `.gitignore`.
 
 Documentos entram em `storage/inbox` e, após processamento validado, migram para `storage/processed`; apenas `.gitkeep` é versionado. Cada item futuro deve possuir hash, origem, licença/autorização e estado de processamento.
 
@@ -20,4 +20,12 @@ Documentos entram em `storage/inbox` e, após processamento validado, migram par
 - **Movimento lateral:** redes mínimas e ausência de socket Docker/host mounts.
 - **Exfiltração:** respostas e logs minimizados; backups criptografados e segregados.
 
-Antes da implantação devem ser adicionados gestão de segredos, autenticação serviço-a-serviço, política de egress, análise de imagens e rotação documentada.
+Endpoints acadêmicos futuros devem depender do mesmo controle de autenticação ou de mecanismo mais restritivo. Saúde permanece sem autenticação por não haver porta publicada. Antes da integração externa ainda devem ser adicionados política de egress, análise de imagens e rate limiting.
+
+## Rotação do token de serviço
+
+1. Gere um novo token de 256 bits ou mais em arquivo temporário protegido.
+2. Substitua atomicamente `secrets/mentor_api_service_token`, sem exibir seu conteúdo.
+3. Reinicie somente API e, futuramente, o Hermes dedicado.
+4. Valide 401 para o token anterior e 200 para o novo.
+5. Remova de forma segura qualquer cópia temporária. Nunca registre o token em ticket ou log.

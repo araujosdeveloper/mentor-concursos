@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 
 from .config import get_settings
 from .health import router as health_router
+from .internal import router as internal_router
 
 
 class JsonFormatter(logging.Formatter):
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
     application.include_router(health_router)
+    application.include_router(internal_router)
 
     @application.middleware("http")
     async def log_request(request: Request, call_next: Any) -> Any:
