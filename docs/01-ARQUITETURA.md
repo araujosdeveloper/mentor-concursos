@@ -11,9 +11,10 @@ A API FastAPI é o único limite de acesso do agente. Ela atende na porta 8080 s
 | PostgreSQL | sim | não | volume dedicado | dados UTC e vetores |
 | Redis | sim | não | volume runtime sem persistência lógica | fila e locks reconstruíveis |
 | Tika | sim | não | nenhuma | extração documental |
-| Hermes | não | sim | volume dedicado | orquestração futura |
+| Hermes | não | sim | volume dedicado | orquestração futura; também egress-internal |
+| Proxy de egress | não | não | nenhuma | egress-internal ↔ egress-uplink |
 
-Ambas as redes são internas e não existem mapeamentos `ports`. O banco, o Redis e o Tika não têm caminho de rede para o Hermes. A API faz a ponte controlada entre `mentor-concursos-agent` e `mentor-concursos-core`.
+Core e agent são internas e não existem mapeamentos `ports`. Uma rede Docker `internal` não oferece saída externa. O banco, Redis e Tika não têm caminho de rede para Hermes ou proxy. A API faz a ponte controlada agent/core, sem egress. O proxy é o único serviço na rede uplink; consulte `05-OBSERVABILIDADE-E-EGRESS.md` para a matriz completa.
 
 ## Convenções
 
@@ -22,7 +23,7 @@ Ambas as redes são internas e não existem mapeamentos `ports`. O banco, o Redi
 - PostgreSQL 16, schema `mentor_concursos` e `TIMESTAMPTZ` em UTC.
 - `America/Sao_Paulo` somente como timezone de apresentação.
 - Português do Brasil na experiência do usuário.
-- Recursos limitados a 2,75 CPUs e cerca de 5,25 GiB no total, deixando margem para SO e serviços existentes; limites não são reserva simultânea.
+- Seis serviços ativos limitados a 1,55 CPU e 2,688 GiB; com Hermes futuro, 1,90 CPU e 3,456 GiB. Limites são tetos, não reservas.
 
 O readiness executa `SELECT 1` autenticado no PostgreSQL e `PING` autenticado no Redis. O worker verifica essas dependências e uma resposta real do Tika. Migrações são aplicadas por processo efêmero, com advisory lock, transação e checksum; o entrypoint do banco não executa SQL da aplicação.
 

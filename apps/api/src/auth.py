@@ -21,8 +21,14 @@ def require_service_token(
     try:
         expected = settings.service_token_file.read_text(encoding="utf-8").strip()
     except OSError:
+        from .metrics import metrics
+
+        metrics.record_auth_failure()
         raise UNAUTHORIZED from None
 
     supplied = credentials.credentials if credentials and credentials.scheme == "Bearer" else ""
     if not expected or not secrets.compare_digest(supplied.encode(), expected.encode()):
+        from .metrics import metrics
+
+        metrics.record_auth_failure()
         raise UNAUTHORIZED

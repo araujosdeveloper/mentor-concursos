@@ -8,6 +8,7 @@ required=(
   docker-compose.yml apps/api/Dockerfile apps/worker/Dockerfile apps/api/src/__init__.py
   apps/api/src/main.py apps/api/src/config.py apps/api/src/health.py apps/worker/src/__init__.py
   apps/api/src/auth.py apps/api/src/dependencies.py apps/api/src/internal.py
+  apps/api/src/metrics.py apps/api/src/rate_limit.py
   apps/api/entrypoint.sh
   apps/worker/src/main.py apps/migrations/main.py database/migrations/001_extensions_and_schema.sql
   scripts/prepare-production-env.sh scripts/apply-migrations.sh tests/unit/test_health.py
@@ -16,6 +17,10 @@ required=(
   docs/adr/ADR-002-banco-dedicado.md docs/adr/ADR-003-imagem-hermes.md
   docs/adr/ADR-004-autenticacao-servico.md docs/04-INVENTARIO-IMAGENS.md
   docs/runbooks/DEPLOY.md docs/runbooks/BACKUP-RESTORE.md tests/integration/verify-core.sh
+  infra/egress/squid.conf infra/egress/allowlist-domains.txt infra/egress/entrypoint.sh requirements.lock
+  requirements-dev.lock scripts/verify-lock.sh scripts/update-locks.sh
+  docs/05-OBSERVABILIDADE-E-EGRESS.md docs/adr/ADR-005-politica-egress.md
+  docs/adr/ADR-006-dependencias-reproduziveis.md docs/runbooks/DIAGNOSTICO.md
   .github/workflows/validate.yml
 )
 
@@ -75,6 +80,20 @@ if grep -Eq 'network_mode:[[:space:]]*host|privileged:[[:space:]]*true' docker-c
   echo "FAIL configuração insegura de container" >&2
   exit 1
 fi
+grep -Eq 'mentor-concursos-egress-proxy:' docker-compose.yml
+grep -Eq 'mentor-concursos-egress-internal:' docker-compose.yml
+grep -Eq 'mentor-concursos-egress-uplink:' docker-compose.yml
+grep -Eq 'max-size:[[:space:]]*10m' docker-compose.yml
+grep -Eq 'max-file:[[:space:]]*"3"' docker-compose.yml
+grep -Eq 'ubuntu/squid:[^[:space:]]+@sha256:[0-9a-f]{64}' docker-compose.yml
+grep -Eq 'api\.telegram\.org' infra/egress/allowlist-domains.txt
+grep -Eq '^\.chatgpt\.com$' infra/egress/allowlist-domains.txt
+grep -Eq '^auth\.openai\.com$' infra/egress/allowlist-domains.txt
+if grep -Eq '^[[:space:]]*http_access[[:space:]]+allow[[:space:]]+all([[:space:]]|$)' infra/egress/squid.conf; then
+  echo "FAIL proxy com liberação irrestrita" >&2
+  exit 1
+fi
+./scripts/verify-lock.sh
 grep -Eq 'mentor-concursos-hermes:' docker-compose.yml
 grep -Eq 'profiles:[[:space:]]*\[hermes-disabled\]' docker-compose.yml
 if grep -Eq '^    image: .*:latest([@[:space:]]|$)' docker-compose.yml; then

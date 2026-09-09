@@ -13,10 +13,11 @@ def test_live_has_stable_payload() -> None:
 
 
 def test_health_routes_are_registered() -> None:
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     assert "/api/health/live" in paths
     assert "/api/health/ready" in paths
     assert "/api/internal/auth-check" in paths
+    assert "/api/internal/metrics" in paths
 
 
 def test_ready_when_dependencies_are_available(monkeypatch) -> None:  # type: ignore[no-untyped-def]

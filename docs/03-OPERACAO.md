@@ -12,7 +12,7 @@ Antes de migrar: obter backup lógico consistente, conferir espaço, validar res
 
 ## Saúde e observabilidade
 
-`live` verifica o processo; `ready` executa consultas autenticadas no PostgreSQL e Redis sem imprimir credenciais. O healthcheck do worker também consulta Tika. Logs são JSON em stdout. Métricas, tracing e alertas continuam pendentes antes de uso real.
+`live` verifica o processo; `ready` executa consultas autenticadas no PostgreSQL e Redis sem imprimir credenciais. O healthcheck do worker também consulta Tika. Logs de aplicação são JSON em stdout e todos os containers usam rotação de 10 MiB por arquivo, três arquivos. Métricas leves protegidas incluem tráfego, latência, status, readiness, falhas de autenticação e rate limiting. Tracing e alertas externos permanecem fora desta fase.
 
 ## Backup e rollback
 
@@ -24,3 +24,5 @@ Antes de migrar: obter backup lógico consistente, conferir espaço, validar res
 ## Validação e implantação futura
 
 Execute `./scripts/validate-foundation.sh`. Depois, revise o Compose renderizado sem gravar segredos. Confira consumo da VPS, coexistência com serviços intocáveis, nomes exclusivos e ausência de portas publicadas. Backup e restauração seguem o runbook dedicado.
+
+Locks são atualizados somente em ambiente virtual com `scripts/update-locks.sh`, seguidos de auditoria e regressão. Diagnóstico de proxy, métricas e limites segue `runbooks/DIAGNOSTICO.md`.

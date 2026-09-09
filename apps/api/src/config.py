@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     redis_port: int = Field(default=6379, ge=1, le=65535)
     redis_password: str = ""
     readiness_timeout_seconds: float = Field(default=1.0, gt=0, le=10)
+    rate_limit_requests: int = Field(default=60, ge=1, le=10_000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     service_token_file: Path = Path("/run/secrets/mentor_api_service_token")
 
 

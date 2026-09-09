@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from .auth import require_service_token
+from .rate_limit import enforce_internal_rate_limit
 
 router = APIRouter(prefix="/api/internal", tags=["internal"])
 
@@ -14,6 +14,8 @@ class AuthCheckResponse(BaseModel):
 
 
 @router.get("/auth-check", response_model=AuthCheckResponse)
-async def auth_check(_: Annotated[None, Depends(require_service_token)]) -> AuthCheckResponse:
+async def auth_check(
+    _: Annotated[None, Depends(enforce_internal_rate_limit)],
+) -> AuthCheckResponse:
     """Valida exclusivamente o contrato de autenticação serviço-a-serviço."""
     return AuthCheckResponse()

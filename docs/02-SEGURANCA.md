@@ -18,9 +18,9 @@ Documentos entram em `storage/inbox` e, após processamento validado, migram par
 - **Alucinação:** resposta baseada em fonte, incerteza explícita e rastreabilidade.
 - **Supply chain:** imagens com versão explícita; Hermes exige referência imutável aprovada com digest.
 - **Movimento lateral:** redes mínimas e ausência de socket Docker/host mounts.
-- **Exfiltração:** respostas e logs minimizados; backups criptografados e segregados.
+- **Exfiltração:** respostas e logs minimizados; backups criptografados e segregados; egress somente pelo proxy com allowlist, bloqueio de redes privadas e CONNECT restrito à porta 443.
 
-Endpoints acadêmicos futuros devem depender do mesmo controle de autenticação ou de mecanismo mais restritivo. Saúde permanece sem autenticação por não haver porta publicada. Antes da integração externa ainda devem ser adicionados política de egress, análise de imagens e rate limiting.
+Endpoints acadêmicos futuros devem depender do mesmo controle de autenticação ou de mecanismo mais restritivo. Saúde permanece sem autenticação por não haver porta publicada. Métricas e auth-check exigem Bearer token e rate limiting distribuído no Redis, em modo fail-closed. O proxy não registra URL completa nem cabeçalhos e não contém credenciais.
 
 ## Rotação do token de serviço
 

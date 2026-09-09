@@ -4,6 +4,11 @@ x-service-security: &service-security
   restart: unless-stopped
   security_opt:
     - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
 
 services:
   mentor-concursos-api:
@@ -26,6 +31,8 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
     secrets:
       - source: mentor_api_service_token
         target: mentor_api_service_token_source
@@ -40,7 +47,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    cpus: "0.35"
+    cpus: "0.25"
     mem_limit: 384m
 
   mentor-concursos-worker:
@@ -74,7 +81,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    cpus: "0.50"
+    cpus: "0.35"
     mem_limit: 512m
 
   mentor-concursos-postgres:
@@ -96,8 +103,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    cpus: "0.65"
-    mem_limit: 1536m
+    cpus: "0.40"
+    mem_limit: 768m
 
   mentor-concursos-redis:
     <<: *service-security
@@ -115,8 +122,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    cpus: "0.20"
-    mem_limit: 256m
+    cpus: "0.10"
+    mem_limit: 128m
 
   mentor-concursos-tika:
     <<: *service-security
@@ -129,8 +136,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    cpus: "0.45"
-    mem_limit: 1024m
+    cpus: "0.35"
+    mem_limit: 768m
 
   mentor-concursos-hermes:
     <<: *service-security
@@ -141,20 +148,52 @@ services:
       MENTOR_API_BASE_URL: http://mentor-concursos-api:8080
       TZ: ${TZ:-America/Sao_Paulo}
       MENTOR_API_SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
+      HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
+      NO_PROXY: mentor-concursos-api,localhost,127.0.0.1
     secrets:
       - mentor_api_service_token
     volumes: [mentor_concursos_hermes_data:/var/lib/hermes]
-    networks: [mentor-concursos-agent]
+    networks: [mentor-concursos-agent, mentor-concursos-egress-internal]
     depends_on:
       mentor-concursos-api: {condition: service_healthy}
+      mentor-concursos-egress-proxy: {condition: service_healthy}
     healthcheck:
       test: ["CMD-SHELL", "test -d /var/lib/hermes"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
-    cpus: "0.60"
-    mem_limit: 1536m
+    cpus: "0.35"
+    mem_limit: 768m
+
+  mentor-concursos-egress-proxy:
+    <<: *service-security
+    container_name: mentor-concursos-egress-proxy
+    image: ubuntu/squid:6.6-24.04_edge@sha256:94f844158e12b52f51b4ae996515e37e8fb3e8d85e1c86caba1a297376e4ec4f
+    entrypoint: ["/usr/local/bin/mentor-egress-entrypoint"]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    volumes:
+      - ./infra/egress/squid.conf:/etc/squid/squid.conf:ro
+      - ./infra/egress/allowlist-domains.txt:/etc/squid/allowlist-domains.txt:ro
+      - ./infra/egress/entrypoint.sh:/usr/local/bin/mentor-egress-entrypoint:ro
+    tmpfs:
+      - /run/squid:size=4m,mode=0755
+      - /var/log/squid:size=8m,mode=0750
+      - /var/spool/squid:size=8m,mode=0750
+      - /tmp:size=16m,mode=1777
+    expose: ["3128"]
+    networks: [mentor-concursos-egress-internal, mentor-concursos-egress-uplink]
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/squid/squid.pid && kill -0 $$(cat /run/squid/squid.pid)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    cpus: "0.10"
+    mem_limit: 128m
 
   mentor-concursos-migrate:
     <<: *service-security
@@ -178,8 +217,8 @@ services:
     networks: [mentor-concursos-core]
     depends_on:
       mentor-concursos-postgres: {condition: service_healthy}
-    cpus: "0.25"
-    mem_limit: 256m
+    cpus: "0.20"
+    mem_limit: 192m
 
 networks:
   mentor-concursos-core:
@@ -188,6 +227,12 @@ networks:
   mentor-concursos-agent:
     name: mentor-concursos-agent
     internal: true
+  mentor-concursos-egress-internal:
+    name: mentor-concursos-egress-internal
+    internal: true
+  mentor-concursos-egress-uplink:
+    name: mentor-concursos-egress-uplink
+    internal: false
 
 volumes:
   mentor_concursos_postgres_data: {name: mentor_concursos_postgres_data}

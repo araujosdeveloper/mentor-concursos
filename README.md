@@ -49,6 +49,8 @@ O script verifica arquivos, Python, testes e lint quando as ferramentas estão d
 - [Arquitetura](docs/01-ARQUITETURA.md)
 - [Segurança](docs/02-SEGURANCA.md)
 - [Operação](docs/03-OPERACAO.md)
+- [Observabilidade mínima e egress](docs/05-OBSERVABILIDADE-E-EGRESS.md)
+- [Runbook de diagnóstico](docs/runbooks/DIAGNOSTICO.md)
 - [ADR-001: isolamento do Hermes](docs/adr/ADR-001-isolamento-hermes.md)
 - [ADR-002: banco dedicado](docs/adr/ADR-002-banco-dedicado.md)
 - [Inventário de imagens](docs/04-INVENTARIO-IMAGENS.md)

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from .config import get_settings
 from .dependencies import check_dependencies
+from .metrics import metrics
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -34,6 +35,8 @@ async def ready(response: Response) -> ReadyResponse:
         "redis": "ok" if dependency_status.redis else "error",
     }
     if not all((dependency_status.postgres, dependency_status.redis)):
+        metrics.set_readiness(False)
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return ReadyResponse(status="not_ready", checks=checks)
+    metrics.set_readiness(True)
     return ReadyResponse(status="ready", checks=checks)
