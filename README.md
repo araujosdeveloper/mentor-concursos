@@ -49,6 +49,19 @@ A porta `8080` é exposta apenas dentro das redes Docker, nunca publicada no hos
 
 O script verifica arquivos, Python, testes e lint quando as ferramentas estão disponíveis, renderiza o Compose sem iniciar serviços e aplica verificações de isolamento e higiene.
 
+O núcleo acadêmico determinístico está em `/api/v1`. A migração 002 e a
+taxonomia referencial são aplicadas separadamente:
+
+```bash
+./scripts/apply-migrations.sh
+./scripts/seed-reference-taxonomy.sh
+./scripts/provision-roberto.sh
+```
+
+O provisionamento não cria objetivo, edital, concurso ou sessão. Mutações
+acadêmicas exigem Bearer, `X-Telegram-User-ID` de usuário já provisionado e
+`Idempotency-Key`; o tempo líquido de sessões é calculado no servidor.
+
 ## Documentação
 
 - [Plano mestre](docs/00-PLANO-MESTRE.md)
@@ -64,3 +77,5 @@ O script verifica arquivos, Python, testes e lint quando as ferramentas estão d
 - [Runbook de backup e restauração](docs/runbooks/BACKUP-RESTORE.md)
 - [Arquitetura e operação do Hermes](infra/hermes/README.md)
 - [Runbook do gateway Telegram](docs/runbooks/HERMES-TELEGRAM.md)
+- [Modelo acadêmico](docs/06-MODELO-ACADEMICO.md)
+- [Runbook de migrações acadêmicas](docs/runbooks/MIGRATIONS-ACADEMIC.md)
