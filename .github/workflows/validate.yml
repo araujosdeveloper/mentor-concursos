@@ -20,7 +20,8 @@ jobs:
           cache: pip
       - name: Bootstrap lock verifier
         run: |
-          python -m pip install --force-reinstall --no-deps 'pip==25.1.1'
+          python -m pip install --ignore-installed --no-deps 'pip==25.1.1'
+          python -c "import pip; from pip._internal.utils.compat import stdlib_pkgs; assert pip.__version__ == '25.1.1'"
           python -m pip install --no-deps \
             'build==1.6.0' 'click==8.5.0' 'pip-api==0.0.35' \
             'packaging==26.3' \
