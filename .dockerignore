@@ -14,3 +14,16 @@ tests
 docs
 backups
 *.log
+!tests/
+!tests/**
+!scripts/
+!scripts/**
+!docs/
+!docs/**
+!infra/
+!infra/**
+!README.md
+!AGENTS.md
+!docker-compose.yml
+!.github/
+!.github/**
