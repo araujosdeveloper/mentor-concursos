@@ -142,24 +142,46 @@ services:
   mentor-concursos-hermes:
     <<: *service-security
     container_name: mentor-concursos-hermes
-    profiles: [hermes-disabled]
+    profiles: [mentor-concursos-hermes]
     image: ghcr.io/hostinger/hvps-hermes-agent@sha256:7af25fad2af3673f5be39824e38772a9895cb70af83c157917b4cd5e3983e9f9
+    entrypoint: ["/usr/local/bin/mentor-hermes-entrypoint"]
     environment:
       MENTOR_API_BASE_URL: http://mentor-concursos-api:8080
       TZ: ${TZ:-America/Sao_Paulo}
       MENTOR_API_SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      HERMES_HOME: /opt/data
+      HOME: /opt/data/home
       HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
       HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
       NO_PROXY: mentor-concursos-api,localhost,127.0.0.1
+      TELEGRAM_PROXY: http://mentor-concursos-egress-proxy:3128
+      TELEGRAM_REQUIRE_MENTION: "true"
+      TELEGRAM_GUEST_MODE: "false"
+      TELEGRAM_OBSERVE_UNMENTIONED_GROUP_MESSAGES: "false"
     secrets:
       - mentor_api_service_token
-    volumes: [mentor_concursos_hermes_data:/var/lib/hermes]
+      - telegram_bot_token
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID, DAC_OVERRIDE, FOWNER]
+    volumes:
+      - mentor_concursos_hermes_data:/opt/data
+      - ./infra/hermes/entrypoint.sh:/usr/local/bin/mentor-hermes-entrypoint:ro
+      - ./infra/hermes/config.yaml:/opt/mentor-hermes/config.yaml:ro
+      - ./infra/hermes/SOUL.md:/opt/mentor-hermes/SOUL.md:ro
+      - ./infra/hermes/USER.md:/opt/mentor-hermes/USER.md:ro
+      - ./infra/hermes/MEMORY.md:/opt/mentor-hermes/MEMORY.md:ro
+      - ./infra/hermes/AGENTS.md:/opt/mentor-hermes/AGENTS.md:ro
+    tmpfs:
+      - /run:size=16m,mode=0755,exec
+      - /tmp:size=32m,mode=1777
+      - /var/tmp:size=8m,mode=1777
     networks: [mentor-concursos-agent, mentor-concursos-egress-internal]
     depends_on:
       mentor-concursos-api: {condition: service_healthy}
       mentor-concursos-egress-proxy: {condition: service_healthy}
     healthcheck:
-      test: ["CMD-SHELL", "test -d /var/lib/hermes"]
+      test: ["CMD-SHELL", "python -c 'import glob,os; assert os.path.exists(\"/opt/data/gateway_state.json\") and any(\"hermes gateway run\" in open(p+\"/cmdline\",\"rb\").read().decode(\"utf-8\",\"ignore\") for p in glob.glob(\"/proc/[0-9]*\"))'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -242,3 +264,5 @@ volumes:
 secrets:
   mentor_api_service_token:
     file: ./secrets/mentor_api_service_token
+  telegram_bot_token:
+    file: ./secrets/telegram_bot_token

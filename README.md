@@ -2,7 +2,7 @@
 
 Fundação versionada de um agente pessoal para a preparação de Roberto Araujo em concursos das áreas administrativa, fiscal e de tribunais. A matéria piloto é Direito Administrativo.
 
-Este repositório contém o núcleo técnico: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika e o contrato de isolamento para uma futura instância dedicada do Hermes Agent. Nenhuma regra acadêmica foi implementada nesta fase.
+Este repositório contém o núcleo técnico: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika e uma instância dedicada do Hermes Agent integrada ao bot privado do Telegram. Nenhuma regra acadêmica foi implementada nesta fase.
 
 ## Requisitos
 
@@ -26,6 +26,12 @@ Prepare os segredos locais de forma idempotente, sem exibi-los:
 ```
 
 O `.env` e `secrets/` reais nunca devem ser versionados. Consulte o [runbook de implantação](docs/runbooks/DEPLOY.md) antes de iniciar o núcleo.
+
+Para a Fase 2A, o serviço Hermes é ativado somente com o profile explícito
+`mentor-concursos-hermes`. Ele usa o volume `mentor_concursos_hermes_data`, o
+provider `openai-codex` autenticado de forma independente e o bot
+`@MentorConcursosRobertoBot`. A saída externa passa exclusivamente pelo proxy
+dedicado; não há portas publicadas.
 
 ## API
 
@@ -56,3 +62,5 @@ O script verifica arquivos, Python, testes e lint quando as ferramentas estão d
 - [Inventário de imagens](docs/04-INVENTARIO-IMAGENS.md)
 - [Runbook de implantação](docs/runbooks/DEPLOY.md)
 - [Runbook de backup e restauração](docs/runbooks/BACKUP-RESTORE.md)
+- [Arquitetura e operação do Hermes](infra/hermes/README.md)
+- [Runbook do gateway Telegram](docs/runbooks/HERMES-TELEGRAM.md)

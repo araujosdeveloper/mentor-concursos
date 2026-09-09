@@ -95,7 +95,7 @@ if grep -Eq '^[[:space:]]*http_access[[:space:]]+allow[[:space:]]+all([[:space:]
 fi
 ./scripts/verify-lock.sh
 grep -Eq 'mentor-concursos-hermes:' docker-compose.yml
-grep -Eq 'profiles:[[:space:]]*\[hermes-disabled\]' docker-compose.yml
+grep -Eq 'profiles:[[:space:]]*\[mentor-concursos-hermes\]' docker-compose.yml
 if grep -Eq '^    image: .*:latest([@[:space:]]|$)' docker-compose.yml; then
   echo "FAIL tag latest encontrada" >&2
   exit 1

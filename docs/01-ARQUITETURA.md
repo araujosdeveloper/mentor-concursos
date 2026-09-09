@@ -31,4 +31,21 @@ A imagem Redis declara `/data` como volume. O Compose o vincula explicitamente a
 
 ## Fronteiras futuras
 
-Telegram e Hermes consumirão endpoints autenticados da API via `Authorization: Bearer`. O token vem de arquivo Docker secret e nunca de valor no Compose. Nenhum deles receberá conexão ou credencial direta do PostgreSQL/Redis. O worker não publica interface de rede. Traefik e exposição pública estão fora desta fase. O profile `hermes-disabled` impede a criação do Hermes na operação padrão.
+Telegram e Hermes consumirão endpoints autenticados da API via `Authorization: Bearer`. O token vem de arquivo Docker secret e nunca de valor no Compose. Nenhum deles receberá conexão ou credencial direta do PostgreSQL/Redis. O worker não publica interface de rede. Traefik e exposição pública estão fora desta fase. O profile `mentor-concursos-hermes` exige ativação explícita.
+# Hermes dedicado (Fase 2A)
+
+Nota operacional: o profile vigente é `mentor-concursos-hermes`; ele mantém o
+serviço fora da operação padrão e exige ativação explícita.
+
+O serviço `mentor-concursos-hermes` é uma instância isolada da imagem
+Hermes v0.20.4 fixada pelo RepoDigest aprovado. Seu estado exclusivo está em
+`mentor_concursos_hermes_data`/`/opt/data`; a personalidade e os limites
+operacionais são semeados por `infra/hermes/entrypoint.sh` sem copiar dados de
+outro agente. O container conecta-se apenas a `mentor-concursos-agent` (API) e
+`mentor-concursos-egress-internal` (proxy). A rede core e a `egress-uplink` não
+fazem parte da topologia Hermes.
+
+Telegram usa polling e DM pairing. O dashboard da imagem não é superfície
+publicada. O provider `openai-codex` usa OAuth próprio no volume; o modelo
+selecionado nesta fase é `gpt-5.6-sol`. Banco, Redis e Tika são inalcançáveis
+por desenho de rede, e a API exige Bearer no endpoint técnico protegido.

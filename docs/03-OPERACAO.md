@@ -2,7 +2,11 @@
 
 ## Princípio desta fundação
 
-O Compose inicia somente o núcleo por padrão. O Hermes está atrás do profile explícito `hermes-disabled` e não integra esta fase. Toda implantação segue `docs/runbooks/DEPLOY.md` e registra o inventário anterior para provar que outros projetos permaneceram intactos.
+O Compose inicia somente o núcleo por padrão. O Hermes dedicado é ativado apenas
+com o profile explícito `mentor-concursos-hermes`, após provider e Telegram
+estarem configurados. Toda implantação segue `docs/runbooks/DEPLOY.md` e o
+runbook [HERMES-TELEGRAM](runbooks/HERMES-TELEGRAM.md), registrando o inventário
+anterior para provar que outros projetos permaneceram intactos.
 
 ## Migrações
 
@@ -20,6 +24,9 @@ Antes de migrar: obter backup lógico consistente, conferir espaço, validar res
 - Redis: sem AOF ou snapshots; o volume nomeado runtime apenas substitui o `VOLUME /data` declarado pela imagem e não oferece persistência lógica. Fila e locks são reconstruíveis; PostgreSQL é a fonte definitiva.
 - Hermes e documentos: backup separado, criptografado, sem compartilhamento com outras instâncias.
 - Aplicação: imagens imutáveis e retorno à versão anterior; banco avança por migrations corretivas.
+- Hermes: backup separado do volume `mentor_concursos_hermes_data`, sempre sem
+  incluir tokens em relatório/Git; rollback é feito parando somente o serviço e
+  restaurando uma cópia validada em volume temporário antes de qualquer troca.
 
 ## Validação e implantação futura
 
