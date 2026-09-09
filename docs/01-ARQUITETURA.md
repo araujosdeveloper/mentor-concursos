@@ -11,10 +11,11 @@ A API FastAPI é o único limite de acesso do agente. Ela atende na porta 8080 s
 | PostgreSQL | sim | não | volume dedicado | dados UTC e vetores |
 | Redis | sim | não | volume runtime sem persistência lógica | fila e locks reconstruíveis |
 | Tika | sim | não | nenhuma | extração documental |
+| Embeddings | sim | não | nenhuma | vetores locais offline, dimensão 384 |
 | Hermes | não | sim | volume dedicado | orquestração futura; também egress-internal |
 | Proxy de egress | não | não | nenhuma | egress-internal ↔ egress-uplink |
 
-Core e agent são internas e não existem mapeamentos `ports`. Uma rede Docker `internal` não oferece saída externa. O banco, Redis e Tika não têm caminho de rede para Hermes ou proxy. A API faz a ponte controlada agent/core, sem egress. O proxy é o único serviço na rede uplink; consulte `05-OBSERVABILIDADE-E-EGRESS.md` para a matriz completa.
+Core e agent são internas e não existem mapeamentos `ports`. Uma rede Docker `internal` não oferece saída externa. O banco, Redis, Tika e embeddings não têm caminho de rede para Hermes ou proxy. A API faz a ponte controlada agent/core, sem egress. O proxy é o único serviço na rede uplink; consulte `05-OBSERVABILIDADE-E-EGRESS.md` para a matriz completa.
 
 ## Convenções
 

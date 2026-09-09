@@ -14,6 +14,7 @@ from .academic import router as academic_router
 from .config import get_settings
 from .health import router as health_router
 from .internal import router as internal_router
+from .knowledge import router as knowledge_router
 from .metrics import metrics
 from .metrics import router as metrics_router
 
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     application.include_router(internal_router)
     application.include_router(metrics_router)
     application.include_router(academic_router)
+    application.include_router(knowledge_router)
 
     @application.exception_handler(Exception)
     async def unhandled_error(request: Request, _: Exception) -> JSONResponse:
