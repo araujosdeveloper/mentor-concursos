@@ -1,0 +1,8 @@
+# Telegram Bot API futura
+api.telegram.org
+
+# Provider openai-codex futuro: API ChatGPT/Codex e autenticação OAuth.
+.chatgpt.com
+auth.openai.com
+
+# Tavily permanece deliberadamente ausente até existir decisão de configuração.

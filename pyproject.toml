@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mentor-concursos"
+version = "0.1.0"
+description = "Fundação da API e do worker do Mentor Concursos"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.141.1",
+  "psycopg[binary]==3.2.9",
+  "pydantic-settings==2.10.1",
+  "redis==6.4.0",
+  "uvicorn[standard]==0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pip-audit==2.9.0",
+  "pip-tools==7.6.1",
+  "pytest==8.4.1",
+  "ruff==0.12.9",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -1,0 +1,244 @@
+name: mentor-concursos
+
+x-service-security: &service-security
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  mentor-concursos-api:
+    <<: *service-security
+    container_name: mentor-concursos-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: mentor-concursos-api:0.1.0
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: ${TZ:-America/Sao_Paulo}
+      DATABASE_HOST: mentor-concursos-postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DATABASE_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      REDIS_HOST: mentor-concursos-redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+    secrets:
+      - source: mentor_api_service_token
+        target: mentor_api_service_token_source
+    expose: ["8080"]
+    networks: [mentor-concursos-core, mentor-concursos-agent]
+    depends_on:
+      mentor-concursos-postgres: {condition: service_healthy}
+      mentor-concursos-redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    cpus: "0.25"
+    mem_limit: 384m
+
+  mentor-concursos-worker:
+    <<: *service-security
+    container_name: mentor-concursos-worker
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    image: mentor-concursos-worker:0.1.0
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: ${TZ:-America/Sao_Paulo}
+      DATABASE_HOST: mentor-concursos-postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DATABASE_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      REDIS_HOST: mentor-concursos-redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      TIKA_URL: http://mentor-concursos-tika:9998
+    networks: [mentor-concursos-core]
+    depends_on:
+      mentor-concursos-postgres: {condition: service_healthy}
+      mentor-concursos-redis: {condition: service_healthy}
+      mentor-concursos-tika: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-m", "apps.worker.src.main", "--healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    cpus: "0.35"
+    mem_limit: 512m
+
+  mentor-concursos-postgres:
+    <<: *service-security
+    container_name: mentor-concursos-postgres
+    image: pgvector/pgvector:0.8.0-pg16@sha256:c72df104202409108a1660ecccd2b7ffac6b17e44c31b2636d10e983f410f8eb
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - mentor_concursos_postgres_data:/var/lib/postgresql/data
+    networks: [mentor-concursos-core]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    cpus: "0.40"
+    mem_limit: 768m
+
+  mentor-concursos-redis:
+    <<: *service-security
+    container_name: mentor-concursos-redis
+    image: redis:7.4.2-alpine3.21@sha256:519f0189dfdee3bc0bad61fb265fe73d864b5c64020e6579ad48a45c49965635
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - mentor_concursos_redis_runtime:/data
+    networks: [mentor-concursos-core]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    cpus: "0.10"
+    mem_limit: 128m
+
+  mentor-concursos-tika:
+    <<: *service-security
+    container_name: mentor-concursos-tika
+    image: apache/tika:3.2.2.0-full@sha256:00604ce6ca877b4c533c1a2c13fd7cd98f031a1eb5b86f05904e85b480f48de8
+    networks: [mentor-concursos-core]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9998/version >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    cpus: "0.35"
+    mem_limit: 768m
+
+  mentor-concursos-hermes:
+    <<: *service-security
+    container_name: mentor-concursos-hermes
+    profiles: [hermes-disabled]
+    image: ghcr.io/hostinger/hvps-hermes-agent@sha256:7af25fad2af3673f5be39824e38772a9895cb70af83c157917b4cd5e3983e9f9
+    environment:
+      MENTOR_API_BASE_URL: http://mentor-concursos-api:8080
+      TZ: ${TZ:-America/Sao_Paulo}
+      MENTOR_API_SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
+      HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
+      NO_PROXY: mentor-concursos-api,localhost,127.0.0.1
+    secrets:
+      - mentor_api_service_token
+    volumes: [mentor_concursos_hermes_data:/var/lib/hermes]
+    networks: [mentor-concursos-agent, mentor-concursos-egress-internal]
+    depends_on:
+      mentor-concursos-api: {condition: service_healthy}
+      mentor-concursos-egress-proxy: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /var/lib/hermes"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    cpus: "0.35"
+    mem_limit: 768m
+
+  mentor-concursos-egress-proxy:
+    <<: *service-security
+    container_name: mentor-concursos-egress-proxy
+    image: ubuntu/squid:6.6-24.04_edge@sha256:94f844158e12b52f51b4ae996515e37e8fb3e8d85e1c86caba1a297376e4ec4f
+    entrypoint: ["/usr/local/bin/mentor-egress-entrypoint"]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    volumes:
+      - ./infra/egress/squid.conf:/etc/squid/squid.conf:ro
+      - ./infra/egress/allowlist-domains.txt:/etc/squid/allowlist-domains.txt:ro
+      - ./infra/egress/entrypoint.sh:/usr/local/bin/mentor-egress-entrypoint:ro
+    tmpfs:
+      - /run/squid:size=4m,mode=0755
+      - /var/log/squid:size=8m,mode=0750
+      - /var/spool/squid:size=8m,mode=0750
+      - /tmp:size=16m,mode=1777
+    expose: ["3128"]
+    networks: [mentor-concursos-egress-internal, mentor-concursos-egress-uplink]
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/squid/squid.pid && kill -0 $$(cat /run/squid/squid.pid)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    cpus: "0.10"
+    mem_limit: 128m
+
+  mentor-concursos-migrate:
+    <<: *service-security
+    profiles: [tools]
+    restart: "no"
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: mentor-concursos-api:0.1.0
+    command: ["python", "-m", "apps.migrations.main"]
+    environment:
+      DATABASE_HOST: mentor-concursos-postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DATABASE_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      MIGRATIONS_DIR: /app/database/migrations
+      TZ: UTC
+    volumes:
+      - ./database/migrations:/app/database/migrations:ro
+    networks: [mentor-concursos-core]
+    depends_on:
+      mentor-concursos-postgres: {condition: service_healthy}
+    cpus: "0.20"
+    mem_limit: 192m
+
+networks:
+  mentor-concursos-core:
+    name: mentor-concursos-core
+    internal: true
+  mentor-concursos-agent:
+    name: mentor-concursos-agent
+    internal: true
+  mentor-concursos-egress-internal:
+    name: mentor-concursos-egress-internal
+    internal: true
+  mentor-concursos-egress-uplink:
+    name: mentor-concursos-egress-uplink
+    internal: false
+
+volumes:
+  mentor_concursos_postgres_data: {name: mentor_concursos_postgres_data}
+  mentor_concursos_redis_runtime: {name: mentor_concursos_redis_runtime}
+  mentor_concursos_hermes_data: {name: mentor_concursos_hermes_data}
+
+secrets:
+  mentor_api_service_token:
+    file: ./secrets/mentor_api_service_token
