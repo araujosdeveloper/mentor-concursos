@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_TOOLS_CACHE_DIR=/tmp/pip-tools-cache \
     RUFF_CACHE_DIR=/tmp/ruff-cache \
+    PYTHONPYCACHEPREFIX=/tmp/pycache \
     PYTEST_ADDOPTS=-p\ no:cacheprovider
 
 WORKDIR /workspace
