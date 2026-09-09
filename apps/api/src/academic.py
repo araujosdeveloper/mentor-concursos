@@ -142,6 +142,14 @@ def _utc(value: datetime | None) -> datetime:
     return value.astimezone(UTC)
 
 
+def _session_timestamp(value: datetime | None) -> datetime:
+    """Normalize a client timestamp and reject future observations."""
+    normalized = _utc(value)
+    if normalized > datetime.now(UTC):
+        raise HTTPException(status_code=422, detail="Timestamp futuro não permitido")
+    return normalized
+
+
 def _jsonable(value: Any) -> Any:
     if isinstance(value, uuid.UUID | datetime | date):
         return value.isoformat()
@@ -191,6 +199,10 @@ def _fingerprint(payload: Any) -> str:
     return hashlib.sha256(json.dumps(_jsonable(payload), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def _idempotency_scope(request: Request, user: AcademicUser) -> str:
+    return f"{request.method}:{request.url.path}:{user.id}"
+
+
 def _begin_idempotency(connection: psycopg.Connection, key: str, scope: str, fingerprint: str) -> dict[str, Any] | None:
     row = connection.execute(
         "SELECT fingerprint, status, response FROM mentor_concursos.idempotency_keys WHERE key=%s AND scope=%s FOR UPDATE",
@@ -226,7 +238,9 @@ def _audit(connection: psycopg.Connection, actor: str, action: str, entity: str,
 
 def _mutate(request: Request, user: AcademicUser, settings: Settings, payload: Any, operation: Callable[[psycopg.Connection], tuple[int, dict[str, Any]]]) -> JSONResponse:
     key = _idempotency_key(request.headers.get("Idempotency-Key"))
-    scope = request.url.path
+    # A chave é isolada por operação e usuário; nunca pode replayar a resposta
+    # de outro usuário autenticado com o mesmo valor.
+    scope = _idempotency_scope(request, user)
     fingerprint = _fingerprint(payload)
     request_id = getattr(request.state, "request_id", "unknown")
     try:
@@ -437,9 +451,14 @@ def activate_cycle(cycle_id: uuid.UUID, request: Request, user: UserDep, setting
 @router.post("/cycles/{cycle_id}/items", status_code=201)
 def add_cycle_item(cycle_id: uuid.UUID, request: Request, body: PlanItemCreate, user: UserDep, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
     def operation(connection: psycopg.Connection) -> tuple[int, dict[str, Any]]:
-        valid = connection.execute("SELECT 1 FROM mentor_concursos.study_cycles c JOIN mentor_concursos.study_goals g ON g.id=c.goal_id WHERE c.id=%s AND g.user_id=%s", (cycle_id, user.id)).fetchone()
+        valid = connection.execute("SELECT c.goal_id FROM mentor_concursos.study_cycles c JOIN mentor_concursos.study_goals g ON g.id=c.goal_id WHERE c.id=%s AND g.user_id=%s", (cycle_id, user.id)).fetchone()
         if not valid:
             raise HTTPException(status_code=404, detail="Ciclo não encontrado")
+        subject = connection.execute("SELECT 1 FROM mentor_concursos.subjects WHERE id=%s AND active", (body.subject_id,)).fetchone()
+        if not subject:
+            raise HTTPException(status_code=422, detail="Disciplina inválida")
+        if body.topic_id is not None and not connection.execute("SELECT 1 FROM mentor_concursos.topics WHERE id=%s AND subject_id=%s AND active", (body.topic_id, body.subject_id)).fetchone():
+            raise HTTPException(status_code=422, detail="Tópico inválido para a disciplina")
         row = connection.execute("INSERT INTO mentor_concursos.study_plan_items(cycle_id,subject_id,topic_id,activity_type,planned_minutes,ordinal,planned_for,completion_criteria) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *", (cycle_id, body.subject_id, body.topic_id, body.activity_type, body.planned_minutes, body.ordinal, body.planned_for, body.completion_criteria)).fetchone()
         _audit(connection, "user", "cycle_item_added", "study_plan_items", row["id"], request.state.request_id)
         return 201, _row_response(row)
@@ -477,9 +496,18 @@ def _session_update(connection: psycopg.Connection, session: dict[str, Any], sta
 @router.post("/sessions/start", status_code=201)
 def start_session(request: Request, body: SessionStart, user: UserDep, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
     def operation(connection: psycopg.Connection) -> tuple[int, dict[str, Any]]:
-        now = _utc(body.started_at)
+        now = _session_timestamp(body.started_at)
         if connection.execute("SELECT 1 FROM mentor_concursos.study_sessions WHERE user_id=%s AND status IN ('active','paused')", (user.id,)).fetchone():
             raise HTTPException(status_code=409, detail="Usuário já possui sessão aberta")
+        goal = connection.execute("SELECT 1 FROM mentor_concursos.study_goals WHERE id=%s AND user_id=%s", (body.goal_id, user.id)).fetchone()
+        if not goal:
+            raise HTTPException(status_code=404, detail="Objetivo não encontrado")
+        if not connection.execute("SELECT 1 FROM mentor_concursos.subjects WHERE id=%s AND active", (body.subject_id,)).fetchone():
+            raise HTTPException(status_code=422, detail="Disciplina inválida")
+        if body.topic_id is not None and not connection.execute("SELECT 1 FROM mentor_concursos.topics WHERE id=%s AND subject_id=%s AND active", (body.topic_id, body.subject_id)).fetchone():
+            raise HTTPException(status_code=422, detail="Tópico inválido para a disciplina")
+        if body.plan_item_id is not None and not connection.execute("SELECT 1 FROM mentor_concursos.study_plan_items i JOIN mentor_concursos.study_cycles c ON c.id=i.cycle_id WHERE i.id=%s AND c.goal_id=%s AND i.subject_id=%s AND (i.topic_id IS NOT DISTINCT FROM %s)", (body.plan_item_id, body.goal_id, body.subject_id, body.topic_id)).fetchone():
+            raise HTTPException(status_code=422, detail="Item de plano incompatível")
         row = connection.execute("INSERT INTO mentor_concursos.study_sessions(user_id,goal_id,plan_item_id,subject_id,topic_id,started_at,observation) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *", (user.id, body.goal_id, body.plan_item_id, body.subject_id, body.topic_id, now, body.observation)).fetchone()
         _audit(connection, "user", "session_started", "study_sessions", row["id"], request.state.request_id)
         return 201, _row_response(row)
@@ -496,7 +524,7 @@ def _transition(session_id: uuid.UUID, request: Request, body: SessionObservatio
         allowed = {"pause": ("active", "paused"), "resume": ("paused", "active"), "complete": ("active", "paused"), "cancel": ("active", "paused")}
         if row["status"] not in allowed[target]:
             raise HTTPException(status_code=409, detail="Transição de sessão inválida")
-        at = _utc(body.at)
+        at = _session_timestamp(body.at)
         if target == "pause":
             connection.execute("INSERT INTO mentor_concursos.study_session_pauses(session_id,started_at) VALUES (%s,%s)", (session_id, at))
             updated = _session_update(connection, row, "paused", at, body.observation)

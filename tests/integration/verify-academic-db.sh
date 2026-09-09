@@ -10,16 +10,42 @@ BEGIN;
 SET LOCAL search_path TO mentor_concursos, public;
 
 CREATE TEMP TABLE academic_fixture_user (id uuid);
+CREATE TEMP TABLE academic_fixture_other_user (id uuid);
 CREATE TEMP TABLE academic_fixture_subject (id uuid);
 WITH inserted AS (
   INSERT INTO users(telegram_user_id, name) VALUES (-2099999999, 'fixture') RETURNING id
 )
 INSERT INTO academic_fixture_user SELECT id FROM inserted;
+WITH inserted AS (
+  INSERT INTO users(telegram_user_id, name) VALUES (-2099999998, 'fixture-other') RETURNING id
+)
+INSERT INTO academic_fixture_other_user SELECT id FROM inserted;
 
 -- A user may have one active goal only.
 INSERT INTO study_goals(user_id, name, horizon, weekly_minutes, active, status)
 SELECT id, 'fixture goal', 'test', 60, TRUE, 'active' FROM academic_fixture_user
 RETURNING id;
+
+-- Resource ownership is scoped by user: the second fixture user cannot see
+-- the first user's goal through the authorization predicate.
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM study_goals g
+    JOIN academic_fixture_other_user u ON u.id = g.user_id
+    WHERE g.name = 'fixture goal'
+  ) THEN
+    RAISE EXCEPTION 'cross-user goal visibility detected';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM study_goals g
+    JOIN academic_fixture_user u ON u.id = g.user_id
+    WHERE g.name = 'fixture goal'
+  ) THEN
+    RAISE EXCEPTION 'fixture goal missing for owner';
+  END IF;
+END $$;
 SAVEPOINT duplicate_goal;
 DO $$ BEGIN
   INSERT INTO study_goals(user_id, name, horizon, weekly_minutes, active, status)
