@@ -22,15 +22,20 @@ required=(
   docs/05-OBSERVABILIDADE-E-EGRESS.md docs/adr/ADR-005-politica-egress.md
   docs/adr/ADR-006-dependencias-reproduziveis.md docs/runbooks/DIAGNOSTICO.md
   .github/workflows/validate.yml
+  Dockerfile.validation
 )
 
 for path in "${required[@]}"; do
   test -f "$path" || { echo "FAIL arquivo ausente: $path" >&2; exit 1; }
 done
 
-if git ls-files --error-unmatch .env >/dev/null 2>&1; then
-  echo "FAIL .env rastreado" >&2
-  exit 1
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+    echo "FAIL .env rastreado" >&2
+    exit 1
+  fi
+else
+  echo "INFO git indisponível; verificação de rastreamento será feita pela CI" >&2
 fi
 if [[ -e .env && "$(stat -c '%a' .env)" != "600" ]]; then
   echo "FAIL .env deve ter permissão 600" >&2
@@ -65,8 +70,17 @@ compose_env=(
   POSTGRES_PASSWORD=validation-only-not-a-secret
   REDIS_PASSWORD=validation-only-not-a-secret
 )
-env "${compose_env[@]}" docker compose config --quiet
-rendered="$(env "${compose_env[@]}" docker compose config)"
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  env "${compose_env[@]}" docker compose config --quiet
+  rendered="$(env "${compose_env[@]}" docker compose config)"
+else
+  [[ "${FOUNDATION_COMPOSE_PREVALIDATED:-0}" == "1" ]] || {
+    echo "FAIL docker compose indisponível" >&2
+    exit 1
+  }
+  echo "INFO docker compose ausente; configuração validada externamente" >&2
+  rendered="$(cat docker-compose.yml)"
+fi
 
 if grep -Eq '^[[:space:]]+ports:' <<<"$rendered"; then
   echo "FAIL porta do host publicada" >&2
@@ -95,20 +109,31 @@ if grep -Eq '^[[:space:]]*http_access[[:space:]]+allow[[:space:]]+all([[:space:]
 fi
 ./scripts/verify-lock.sh
 grep -Eq 'mentor-concursos-hermes:' docker-compose.yml
-grep -Eq 'profiles:[[:space:]]*\[hermes-disabled\]' docker-compose.yml
+grep -Eq 'profiles:[[:space:]]*\[mentor-concursos-hermes\]' docker-compose.yml
 if grep -Eq '^    image: .*:latest([@[:space:]]|$)' docker-compose.yml; then
   echo "FAIL tag latest encontrada" >&2
   exit 1
 fi
 
-tracked_storage="$(git ls-files storage/inbox storage/processed | grep -vE '/\.gitkeep$' || true)"
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  tracked_storage="$(git ls-files storage/inbox storage/processed | grep -vE '/\.gitkeep$' || true)"
+else
+  tracked_storage="$(find storage/inbox storage/processed -type f ! -name .gitkeep -print 2>/dev/null || true)"
+fi
 test -z "$tracked_storage" || { echo "FAIL conteúdo de storage rastreado" >&2; exit 1; }
 
-if rg --hidden --glob '!.git/**' --glob '!.env' --glob '!secrets/**' --glob '!.env.example' \
-  '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' .; then
+secret_pattern='(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})'
+if command -v rg >/dev/null 2>&1; then
+  secret_scan=(rg --hidden --glob '!.git/**' --glob '!.env' --glob '!secrets/**' --glob '!.env.example' "$secret_pattern" .)
+else
+  secret_scan=(grep -RInE --exclude-dir=.git --exclude=.env --exclude=.env.example --exclude-dir=secrets "$secret_pattern" .)
+fi
+if "${secret_scan[@]}"; then
   echo "FAIL possível segredo detectado" >&2
   exit 1
 fi
 
-git diff --check
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git diff --check
+fi
 echo "PASS validação da fundação"

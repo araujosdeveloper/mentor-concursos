@@ -10,3 +10,14 @@
 8. Confirme que a database principal e seu volume permanecem intactos.
 
 O dump e o checksum ficam fora do Git e não contêm o arquivo de secrets. O nome do backup, resultado da restauração e SHA-256 podem ser registrados no relatório; credenciais e conteúdo sensível não.
+
+## Backup do volume Hermes
+
+O backup do volume `mentor_concursos_hermes_data` contém OAuth, estado de sessão e
+autorizações Telegram; portanto é material sensível. O modo 600 protege o arquivo
+somente no host e não substitui criptografia. Cópias externas exigem criptografia
+autenticada, com a chave gerenciada separadamente (nunca junto do backup). O arquivo
+não pode ser enviado ao Git, chat, armazenamento público ou anexo. Uma restauração
+após suspeita de exposição exige rotação das credenciais OAuth, do token Telegram e
+dos demais segredos antes de reativar o gateway. O procedimento de backup deve
+registrar apenas caminho, permissões e checksum, nunca o conteúdo.

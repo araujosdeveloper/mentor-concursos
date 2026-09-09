@@ -1,0 +1,16 @@
+# Dedicated Mentor Concursos Hermes configuration.
+# Secrets are injected through Docker secrets and environment at runtime.
+model:
+  provider: openai-codex
+
+unauthorized_dm_behavior: pair
+
+platforms:
+  telegram:
+    enabled: true
+    dm_policy: pairing
+    group_policy: disabled
+    require_mention: true
+    guest_mode: false
+    observe_unmentioned_group_messages: false
+    exclusive_bot_mentions: true
