@@ -5,8 +5,8 @@
 
 ## Decisão
 
-Manter `pyproject.toml` como declaração direta e dois locks gerados por pip-tools 7.5.0 sob
-pip 25.1.1: runtime e desenvolvimento. Todas as versões transitivas e artefatos são fixados por
+Manter `pyproject.toml` como declaração direta e dois locks gerados por pip-tools 7.6.1:
+runtime e desenvolvimento. Todas as versões transitivas e artefatos são fixados por
 hash. Imagens instalam somente o lock de runtime usando `--require-hashes --no-deps`; CI compara
 locks regenerados e audita vulnerabilidades conhecidas.
 

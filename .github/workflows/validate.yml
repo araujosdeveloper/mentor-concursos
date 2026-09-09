@@ -21,12 +21,10 @@ jobs:
       - name: Bootstrap lock verifier
         run: |
           python -m venv .ci-venv
-          .ci-venv/bin/python -m pip install --upgrade --no-deps 'pip==25.1.1'
-          .ci-venv/bin/python -c "import pip; from pip._internal.utils.compat import stdlib_pkgs; assert pip.__version__ == '25.1.1'"
           .ci-venv/bin/python -m pip install --no-deps \
             'build==1.6.0' 'click==8.5.0' 'pip-api==0.0.35' \
             'packaging==26.3' \
-            'pip-requirements-parser==32.0.1' 'pip-tools==7.5.0' \
+            'pip-requirements-parser==32.0.1' 'pip-tools==7.6.1' \
             'pyproject-hooks==1.2.0' 'setuptools==84.0.0'
           echo "$GITHUB_WORKSPACE/.ci-venv/bin" >> "$GITHUB_PATH"
       - name: Verify dependency locks

@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 command -v pip-compile >/dev/null 2>&1 || {
-  echo "FAIL pip-compile indisponível; use um ambiente virtual local com pip==25.1.1 e pip-tools==7.5.0" >&2
+  echo "FAIL pip-compile indisponível; use um ambiente virtual local com pip-tools==7.6.1" >&2
   exit 1
 }
 export PIP_TOOLS_CACHE_DIR="${PIP_TOOLS_CACHE_DIR:-/tmp/mentor-concursos-pip-tools-cache}"

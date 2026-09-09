@@ -59,7 +59,7 @@ somam no máximo 1,55 CPU e 2,688 GiB; com Hermes, 1,90 CPU e 3,456 GiB. São te
 
 `requirements.lock` e `requirements-dev.lock` fixam transitivas e hashes. O build instala o
 lock de runtime com `--require-hashes --no-deps`. Para atualizar, crie ambiente virtual local,
-instale exatamente `pip==25.1.1` e `pip-tools==7.5.0`, execute `scripts/update-locks.sh`, revise
+instale exatamente `pip-tools==7.6.1`, execute `scripts/update-locks.sh`, revise
 o diff, rode `pip-audit --disable-pip -r requirements.lock` e toda a regressão. O CI executa
 `scripts/verify-lock.sh`; divergência do `pyproject.toml` falha o pipeline. Atualizações nunca
 são automáticas.
