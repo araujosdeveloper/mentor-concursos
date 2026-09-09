@@ -38,6 +38,7 @@ storage/extracted/*
 storage/rejected/*
 !storage/rejected/.gitkeep
 documents/
+apps/embeddings/model/
 .idea/
 .vscode/
 .DS_Store

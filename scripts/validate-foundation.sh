@@ -25,7 +25,9 @@ required=(
   Dockerfile.validation
   database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
-  apps/api/src/knowledge.py apps/embeddings/Dockerfile docs/AUTONOMIA-OPERACIONAL.md
+  apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model.manifest.sha256 docs/AUTONOMIA-OPERACIONAL.md
+  docs/runbooks/EMBEDDINGS.md
+  scripts/benchmark-knowledge.py
   apps/api/src/academic.py scripts/seed-reference-taxonomy.sh scripts/provision-roberto.sh
   tests/unit/test_academic.py
   tests/integration/verify-academic-db.sh

@@ -59,6 +59,22 @@ class RetrieveRequest(StrictModel):
     min_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
+def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit: int, k: int = 60) -> list[dict[str, Any]]:
+    """Funde rankings sem somar scores de escalas incompatíveis."""
+    merged: dict[uuid.UUID, dict[str, Any]] = {}
+    for rank, row in enumerate(lexical, 1):
+        item = merged.setdefault(row["id"], dict(row))
+        item["lexical_rank"] = rank
+        item["lexical_score"] = float(row.get("lexical_score", 0.0))
+    for rank, row in enumerate(vector, 1):
+        item = merged.setdefault(row["id"], dict(row))
+        item["vector_rank"] = rank
+        item["vector_score"] = float(row.get("vector_score", 0.0))
+    for item in merged.values():
+        item["rrf_score"] = (1 / (k + item.get("lexical_rank", 10_000))) + (1 / (k + item.get("vector_rank", 10_000)))
+    return sorted(merged.values(), key=lambda row: (-row["rrf_score"], str(row["id"])))[:limit]
+
+
 def _embed(query: str, settings: Settings) -> tuple[list[float], str, str]:
     request = urllib.request.Request(
         f"{getattr(settings, 'embeddings_url', 'http://mentor-concursos-embeddings:8090')}/embed",
@@ -164,9 +180,23 @@ def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep
         params.append(body.topic_id)
     where = " AND ".join(filters)
     with _connect(settings) as connection:
-        rows = connection.execute(f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,s.title AS source_title,v.version_label, 1 - (e.embedding <=> %s::vector) AS score FROM mentor_concursos.knowledge_chunks c JOIN mentor_concursos.knowledge_source_versions v ON v.id=c.source_version_id JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id JOIN mentor_concursos.knowledge_embeddings e ON e.chunk_id=c.id WHERE {where} ORDER BY score DESC,c.id LIMIT %s", [vector_literal, *params, body.limit]).fetchall()
-        scores = [{"chunk_id": str(row["id"]), "score": float(row["score"])} for row in rows if float(row["score"]) >= body.min_score]
-        returned = [row for row in rows if float(row["score"]) >= body.min_score]
+        common = """FROM mentor_concursos.knowledge_chunks c
+            JOIN mentor_concursos.knowledge_source_versions v ON v.id=c.source_version_id
+            JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id
+            JOIN mentor_concursos.knowledge_embeddings e ON e.chunk_id=c.id"""
+        lexical = connection.execute(
+            f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,ts_rank_cd(c.search_vector, websearch_to_tsquery('portuguese', %s)) AS lexical_score {common} WHERE {where} AND c.search_vector @@ websearch_to_tsquery('portuguese', %s) ORDER BY lexical_score DESC,c.id LIMIT %s",
+            [body.query, *params, body.query, body.limit * 4],
+        ).fetchall()
+        vector_rows = connection.execute(
+            f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,1 - (e.embedding <=> %s::vector) AS vector_score {common} WHERE {where} ORDER BY vector_score DESC,c.id LIMIT %s",
+            [vector_literal, *params, body.limit * 4],
+        ).fetchall()
+        # RRF evita somar scores de escalas diferentes. K=60 é o valor inicial
+        # documentado e o desempate por UUID torna o resultado estável.
+        k = 60
+        returned = rrf_merge(lexical, vector_rows, body.limit, k)
+        scores = [{"chunk_id": str(row["id"]), "rrf_score": row["rrf_score"], "lexical_rank": row.get("lexical_rank"), "vector_rank": row.get("vector_rank"), "lexical_score": row.get("lexical_score"), "vector_score": row.get("vector_score")} for row in returned]
         query_hash = hashlib.sha256(body.query.strip().lower().encode()).hexdigest()
-        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, query_hash, json.dumps({"subject_id": str(body.subject_id) if body.subject_id else None, "topic_id": str(body.topic_id) if body.topic_id else None}), [row["id"] for row in returned], json.dumps(scores), model_id, revision, request.state.request_id))
-    return {"items": [_row_response(row) for row in returned], "model_id": model_id, "model_revision": revision, "next_cursor": None}
+        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, query_hash, json.dumps({"subject_id": str(body.subject_id) if body.subject_id else None, "topic_id": str(body.topic_id) if body.topic_id else None, "rrf_k": k}), [row["id"] for row in returned], json.dumps(scores), model_id, revision, request.state.request_id))
+    return {"items": [_row_response(row) for row in returned], "model_id": model_id, "model_revision": revision, "fusion": {"method": "rrf", "k": k}, "next_cursor": None}

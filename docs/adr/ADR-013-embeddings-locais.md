@@ -7,6 +7,10 @@ limite inicial de CPU/memória, mas a qualidade deve ser medida no conjunto
 sintético antes de qualquer fonte real.
 
 O serviço é offline, sem saída externa e sem código remoto em runtime. A
-imagem atual expõe o contrato determinístico de 384 dimensões para validação e
-fixtures; a incorporação dos pesos oficiais deve ocorrer em build reprodutível
-quando o artefato aprovado estiver disponível localmente.
+imagem `mentor-concursos-embeddings:0.2.1` incorpora `model.safetensors`,
+tokenizer e manifesto SHA-256 do snapshot aprovado; o startup verifica o
+manifesto, `trust_remote_code=False`, dimensão 384 e falha fechado. O backend
+determinístico não é permitido em produção. A inferência usa diretamente
+Transformers/AutoModel com mean-pooling mascarado, sem dependência de
+`sentence-transformers`; a auditoria pip-audit do lock real não encontrou
+vulnerabilidades conhecidas.

@@ -94,12 +94,15 @@ services:
     build:
       context: .
       dockerfile: apps/embeddings/Dockerfile
-    image: mentor-concursos-embeddings:0.1.0
+    image: mentor-concursos-embeddings:0.2.1@sha256:871b3065871ebaff61b0df2d1dafa5303611743572ad220b236f379ba2705d7c
     command: ["python", "-m", "apps.worker.src.embedding_service"]
     environment:
       PYTHONUNBUFFERED: "1"
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
+      EMBEDDINGS_BACKEND: real
+      MODEL_PATH: /app/model
+      MODEL_MANIFEST: /app/model.manifest.sha256
     expose: ["8090"]
     networks: [mentor-concursos-core]
     healthcheck:
