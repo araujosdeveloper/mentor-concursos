@@ -23,6 +23,13 @@ required=(
   docs/adr/ADR-006-dependencias-reproduziveis.md docs/runbooks/DIAGNOSTICO.md
   .github/workflows/validate.yml
   Dockerfile.validation
+  database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
+  apps/api/src/academic.py scripts/seed-reference-taxonomy.sh scripts/provision-roberto.sh
+  tests/unit/test_academic.py
+  tests/integration/verify-academic-db.sh
+  docs/06-MODELO-ACADEMICO.md docs/07-API-ACADEMICA.md
+  docs/adr/ADR-010-nucleo-academico.md docs/adr/ADR-011-calculo-tempo-liquido.md
+  docs/adr/ADR-012-idempotencia-academica.md docs/runbooks/MIGRATIONS-ACADEMIC.md
 )
 
 for path in "${required[@]}"; do

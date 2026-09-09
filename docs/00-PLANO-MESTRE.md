@@ -12,6 +12,11 @@ Questões reais e questões autorais serão armazenadas com classificação ineq
 
 ## Fases, gates e aceite
 
+0. **Núcleo acadêmico determinístico (Fase 2B).** Modelo relacional, taxonomia
+   referencial, objetivos, editais, ciclos, sessões, auditoria e idempotência.
+   Gate: migração checksum-validada, Roberto provisionado sem duplicidade,
+   nenhuma entidade fictícia em produção, API autenticada e métricas de sessão
+   recalculáveis no servidor.
 1. **Fundação técnica.** Estrutura, isolamento, API de saúde, worker, autenticação interna, migração controlada e validação real do núcleo. A Fase 1.2 acrescenta proxy com allowlist, métricas, rate limiting Redis, logs rotacionados e locks com hashes. Gate: seis serviços operacionais verificados, egress permitido/negado ensaiado, migração e vector validados, testes verdes, Hermes desativado e nenhuma porta ou segredo publicado.
 2. **Ingestão piloto.** Pipeline rastreável de documentos de Direito Administrativo, extração via Tika, hash e metadados de proveniência. Gate: corpus pequeno recuperável, deduplicado e auditável, com teste de falhas.
 3. **Aprendizagem piloto.** Planejamento, sessões, revisões espaçadas e caderno de erros. Gate: fluxos testados com dados reais autorizados, métricas compreensíveis e nenhum conteúdo sem fonte.
