@@ -120,7 +120,7 @@ def main() -> None:
         vector = sorted(zip(docs, doc_vectors, strict=True), key=lambda item: (-cosine(query_vectors[index], item[1]), str(item[0]["id"])))
         lexical_rank = {str(doc["id"]): rank for rank, doc in enumerate(lexical, 1)}
         vector_rank = {str(doc["id"]): rank for rank, (doc, _) in enumerate(vector, 1)}
-        hybrid = sorted(docs, key=lambda doc: (-(5 / (60 + lexical_rank[str(doc["id"])]) + 1 / (60 + vector_rank[str(doc["id"])])), str(doc["id"])))
+        hybrid = sorted(docs, key=lambda doc: (-(4 / (20 + lexical_rank[str(doc["id"])]) + 1 / (20 + vector_rank[str(doc["id"])])), str(doc["id"])))
         lexical_rankings.append([str(doc["id"]) for doc in lexical])
         vector_rankings.append([str(doc["id"]) for doc, _ in vector])
         hybrid_rankings.append([str(doc["id"]) for doc in hybrid])
@@ -132,7 +132,7 @@ def main() -> None:
         "queries": len(cases),
         "answerable_queries": sum(bool(item) for item in relevant),
         "no_answer_queries": sum(not item for item in relevant),
-        "metrics": {"lexical": metrics(lexical_rankings, relevant), "vector": metrics(vector_rankings, relevant), "hybrid_rrf_k60": metrics(hybrid_rankings, relevant)},
+        "metrics": {"lexical": metrics(lexical_rankings, relevant), "vector": metrics(vector_rankings, relevant), "hybrid_rrf_k20_weight4": metrics(hybrid_rankings, relevant)},
         "filter_precision": 1.0,
         "cross_user_leakage": 0,
         "ineligible_leakage": 0,
@@ -143,7 +143,8 @@ def main() -> None:
         "latency_p95_ms": round(sorted(latencies)[max(0, int(len(latencies) * 0.95) - 1)] * 1000, 2),
         "latency_p99_ms": round(sorted(latencies)[max(0, int(len(latencies) * 0.99) - 1)] * 1000, 2),
         "throughput_texts_per_second": round((len(docs) + len(cases)) / sum(latencies), 2),
-        "rrf_k": 60,
+        "rrf_k": 20,
+        "rrf_lexical_weight": 4.0,
         "synthetic_only": True,
     }, sort_keys=True))
 

@@ -59,7 +59,7 @@ class RetrieveRequest(StrictModel):
     min_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
-def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit: int, k: int = 60, lexical_weight: float = 5.0) -> list[dict[str, Any]]:
+def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit: int, k: int = 20, lexical_weight: float = 4.0) -> list[dict[str, Any]]:
     """Funde rankings sem somar scores incompatíveis, priorizando léxico jurídico."""
     merged: dict[uuid.UUID, dict[str, Any]] = {}
     for rank, row in enumerate(lexical, 1):
@@ -192,10 +192,11 @@ def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep
             f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,1 - (e.embedding <=> %s::vector) AS vector_score {common} WHERE {where} ORDER BY vector_score DESC,c.id LIMIT %s",
             [vector_literal, *params, body.limit * 4],
         ).fetchall()
-        # RRF evita somar scores de escalas diferentes. K=60 é o valor inicial
-        # documentado e o desempate por UUID torna o resultado estável.
-        k = 60
-        lexical_weight = 5.0
+        # RRF evita somar scores de escalas diferentes. A calibração sintética
+        # estratificada fixou k=20 e peso lexical 4.0; o desempate por UUID
+        # torna o resultado estável.
+        k = 20
+        lexical_weight = 4.0
         returned = rrf_merge(lexical, vector_rows, body.limit, k, lexical_weight)
         scores = [{"chunk_id": str(row["id"]), "rrf_score": row["rrf_score"], "lexical_rank": row.get("lexical_rank"), "vector_rank": row.get("vector_rank"), "lexical_score": row.get("lexical_score"), "vector_score": row.get("vector_score")} for row in returned]
         query_hash = hashlib.sha256(body.query.strip().lower().encode()).hexdigest()

@@ -24,6 +24,7 @@ COPY scripts ./scripts
 COPY tests ./tests
 COPY README.md AGENTS.md .gitignore .env.example .editorconfig docker-compose.yml .dockerignore ./
 COPY Dockerfile.validation ./
+COPY Dockerfile.validation.dockerignore ./
 COPY docs ./docs
 COPY infra ./infra
 COPY .github ./.github

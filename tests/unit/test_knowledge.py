@@ -63,6 +63,18 @@ def test_rrf_is_deterministic_and_keeps_provenance_ranks() -> None:
     )
 
 
+def test_rrf_calibrated_defaults_are_bounded_and_deterministic() -> None:
+    first = UUID("00000000-0000-0000-0000-000000000001")
+    second = UUID("00000000-0000-0000-0000-000000000002")
+    result = rrf_merge(
+        [{"id": first}, {"id": second}],
+        [{"id": second}, {"id": first}],
+        2,
+    )
+    assert [row["id"] for row in result] == [first, second]
+    assert result[0]["rrf_score"] > result[1]["rrf_score"]
+
+
 def test_fixture_embedding_backend_is_rejected_for_production(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
