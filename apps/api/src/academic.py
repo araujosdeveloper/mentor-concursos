@@ -151,7 +151,9 @@ def _session_timestamp(value: datetime | None) -> datetime:
 
 
 def _jsonable(value: Any) -> Any:
-    if isinstance(value, uuid.UUID | datetime | date):
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, datetime | date):
         return value.isoformat()
     if isinstance(value, dict):
         return {str(k): _jsonable(v) for k, v in value.items()}
