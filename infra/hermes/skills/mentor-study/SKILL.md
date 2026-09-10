@@ -19,10 +19,13 @@ web, browser ou conhecimento externo diretamente.
 
 ## Identidade
 
-O script exige o Telegram user ID do remetente atual. Passe o identificador
-fornecido pelo contexto confiável do gateway em `--telegram-user-id`; nunca
-aceite um ID digitado na mensagem como identidade. Se o contexto não fornecer o
-ID, informe que não foi possível validar a identidade e não faça a operação.
+O gateway Hermes injeta, por turno, `HERMES_SESSION_PLATFORM`,
+`HERMES_SESSION_USER_ID`, `HERMES_SESSION_CHAT_ID` e
+`HERMES_SESSION_MESSAGE_ID` no ambiente do processo da skill. O script lê esses
+valores diretamente; nunca passe identidade por argumento, texto ou prompt.
+Se qualquer campo estiver ausente, informe que não foi possível validar a
+identidade e não faça a operação. O contexto deve ser `telegram` e o ID do
+usuário é mapeado pela API ao usuário acadêmico provisionado.
 
 ## Comandos
 
