@@ -39,6 +39,7 @@ storage/rejected/*
 !storage/rejected/.gitkeep
 documents/
 apps/embeddings/model/
+apps/embeddings/model-cpu/
 .idea/
 .vscode/
 .DS_Store

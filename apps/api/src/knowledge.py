@@ -59,8 +59,8 @@ class RetrieveRequest(StrictModel):
     min_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
-def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit: int, k: int = 60) -> list[dict[str, Any]]:
-    """Funde rankings sem somar scores de escalas incompatíveis."""
+def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit: int, k: int = 60, lexical_weight: float = 5.0) -> list[dict[str, Any]]:
+    """Funde rankings sem somar scores incompatíveis, priorizando léxico jurídico."""
     merged: dict[uuid.UUID, dict[str, Any]] = {}
     for rank, row in enumerate(lexical, 1):
         item = merged.setdefault(row["id"], dict(row))
@@ -71,7 +71,7 @@ def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit
         item["vector_rank"] = rank
         item["vector_score"] = float(row.get("vector_score", 0.0))
     for item in merged.values():
-        item["rrf_score"] = (1 / (k + item.get("lexical_rank", 10_000))) + (1 / (k + item.get("vector_rank", 10_000)))
+        item["rrf_score"] = (lexical_weight / (k + item.get("lexical_rank", 10_000))) + (1 / (k + item.get("vector_rank", 10_000)))
     return sorted(merged.values(), key=lambda row: (-row["rrf_score"], str(row["id"])))[:limit]
 
 
@@ -195,8 +195,9 @@ def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep
         # RRF evita somar scores de escalas diferentes. K=60 é o valor inicial
         # documentado e o desempate por UUID torna o resultado estável.
         k = 60
-        returned = rrf_merge(lexical, vector_rows, body.limit, k)
+        lexical_weight = 5.0
+        returned = rrf_merge(lexical, vector_rows, body.limit, k, lexical_weight)
         scores = [{"chunk_id": str(row["id"]), "rrf_score": row["rrf_score"], "lexical_rank": row.get("lexical_rank"), "vector_rank": row.get("vector_rank"), "lexical_score": row.get("lexical_score"), "vector_score": row.get("vector_score")} for row in returned]
         query_hash = hashlib.sha256(body.query.strip().lower().encode()).hexdigest()
-        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, query_hash, json.dumps({"subject_id": str(body.subject_id) if body.subject_id else None, "topic_id": str(body.topic_id) if body.topic_id else None, "rrf_k": k}), [row["id"] for row in returned], json.dumps(scores), model_id, revision, request.state.request_id))
-    return {"items": [_row_response(row) for row in returned], "model_id": model_id, "model_revision": revision, "fusion": {"method": "rrf", "k": k}, "next_cursor": None}
+        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, query_hash, json.dumps({"subject_id": str(body.subject_id) if body.subject_id else None, "topic_id": str(body.topic_id) if body.topic_id else None, "rrf_k": k, "lexical_weight": lexical_weight}), [row["id"] for row in returned], json.dumps(scores), model_id, revision, request.state.request_id))
+    return {"items": [_row_response(row) for row in returned], "model_id": model_id, "model_revision": revision, "fusion": {"method": "rrf", "k": k, "lexical_weight": lexical_weight}, "next_cursor": None}

@@ -19,11 +19,12 @@ MODEL_REVISION = "fd1525a9fd15316a2d503bf26ab031a61d056e98"
 DIMENSIONS = 384
 MAX_CHARS = 12000
 MAX_BATCH = 16
-MODEL_PATH = Path(os.getenv("MODEL_PATH", "/app/model"))
-MANIFEST_PATH = Path(os.getenv("MODEL_MANIFEST", "/app/model.manifest.sha256"))
+MODEL_PATH = Path(os.getenv("MODEL_PATH", "/app/model-cpu"))
+MANIFEST_PATH = Path(os.getenv("MODEL_MANIFEST", "/app/model-cpu.manifest.sha256"))
 logger = logging.getLogger("mentor.embeddings")
 model = None
 tokenizer = None
+runtime = None
 model_lock = threading.Lock()
 
 
@@ -35,25 +36,32 @@ def verify_manifest() -> None:
         path = MODEL_PATH / relative.removeprefix("./")
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             raise RuntimeError("e5_model_manifest_mismatch")
-    if not (MODEL_PATH / "model.safetensors").is_file():
-        raise RuntimeError("e5_safetensors_missing")
+    if not (MODEL_PATH / "model.onnx").is_file():
+        raise RuntimeError("e5_onnx_missing")
 
 
 def load_model() -> None:
-    global model, tokenizer
+    global model, tokenizer, runtime
     if os.getenv("EMBEDDINGS_BACKEND", "real") != "real":
         raise RuntimeError("fixture_backend_forbidden_in_production")
     verify_manifest()
-    from transformers import AutoModel, AutoTokenizer
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
 
-    candidate_tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH), local_files_only=True, trust_remote_code=False)
-    candidate = AutoModel.from_pretrained(str(MODEL_PATH), local_files_only=True, trust_remote_code=False)
-    candidate.eval()
-    if int(candidate.config.hidden_size) != DIMENSIONS:
+    candidate_tokenizer = Tokenizer.from_file(str(MODEL_PATH / "tokenizer.json"))
+    candidate_tokenizer.enable_truncation(max_length=512)
+    candidate_runtime = ort.InferenceSession(
+        str(MODEL_PATH / "model.onnx"),
+        providers=["CPUExecutionProvider"],
+        sess_options=ort.SessionOptions(),
+    )
+    output_shape = candidate_runtime.get_outputs()[0].shape
+    if output_shape[-1] not in {DIMENSIONS, "384"}:
         raise RuntimeError("e5_dimension_invalid")
-    model = candidate
+    model = candidate_runtime
     tokenizer = candidate_tokenizer
-    logger.info("embedding_model_loaded model_id=%s revision=%s dimensions=%s", MODEL_ID, MODEL_REVISION, DIMENSIONS)
+    runtime = "onnx-int8-cpu"
+    logger.info("embedding_model_loaded model_id=%s revision=%s dimensions=%s runtime=%s", MODEL_ID, MODEL_REVISION, DIMENSIONS, runtime)
 
 
 def encode(texts: list[str], prefix: str) -> tuple[list[list[float]], bool]:
@@ -64,14 +72,18 @@ def encode(texts: list[str], prefix: str) -> tuple[list[list[float]], bool]:
     if any(not text.strip() for text in truncated):
         raise ValueError("embedding_input_empty")
     with model_lock:
-        import torch
-
-        encoded = tokenizer([f"{prefix} {text}" for text in truncated], padding=True, truncation=True, max_length=512, return_tensors="pt")
-        with torch.no_grad():
-            output = model(**encoded).last_hidden_state
-        mask = encoded["attention_mask"].unsqueeze(-1).expand(output.size()).float()
-        vectors = (output * mask).sum(1) / torch.clamp(mask.sum(1), min=1e-9)
-        vectors = torch.nn.functional.normalize(vectors, p=2, dim=1)
+        import numpy as np
+        encodings = [tokenizer.encode(f"{prefix} {text}") for text in truncated]
+        max_length = max(len(item.ids) for item in encodings)
+        input_ids = np.zeros((len(encodings), max_length), dtype=np.int64)
+        attention_mask = np.zeros_like(input_ids)
+        for index, encoding in enumerate(encodings):
+            input_ids[index, : len(encoding.ids)] = encoding.ids
+            attention_mask[index, : len(encoding.ids)] = 1
+        output = model.run(None, {"input_ids": input_ids, "attention_mask": attention_mask})[0]
+        mask = attention_mask[..., None].astype(np.float32)
+        vectors = (output * mask).sum(1) / np.clip(mask.sum(1), 1e-9, None)
+        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
     result = [[float(value) for value in vector] for vector in vectors.tolist()]
     if any(len(vector) != DIMENSIONS or not all(math.isfinite(value) for value in vector) for vector in result):
         raise RuntimeError("embedding_output_invalid")
@@ -85,7 +97,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/health":
             self.send_error(404)
             return
-        self._json(200, {"status": "ok", "backend": "e5-real", "model_id": MODEL_ID, "revision": MODEL_REVISION, "dimensions": DIMENSIONS})
+        self._json(200, {"status": "ok", "backend": "e5-real", "runtime": runtime, "model_id": MODEL_ID, "revision": MODEL_REVISION, "dimensions": DIMENSIONS})
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path != "/embed":
@@ -102,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(texts, list) or any(not isinstance(text, str) for text in texts):
                 raise ValueError("embedding_request_invalid")
             vectors, truncated = encode(texts, prefix)
-            self._json(200, {"backend": "e5-real", "model_id": MODEL_ID, "revision": MODEL_REVISION, "dimensions": DIMENSIONS, "vectors": vectors, "truncated": truncated, "duration_ms": int((time.perf_counter() - started) * 1000)})
+            self._json(200, {"backend": "e5-real", "runtime": runtime, "model_id": MODEL_ID, "revision": MODEL_REVISION, "dimensions": DIMENSIONS, "vectors": vectors, "truncated": truncated, "duration_ms": int((time.perf_counter() - started) * 1000)})
         except (ValueError, json.JSONDecodeError):
             self._json(422, {"detail": "embedding_request_invalid"})
         except Exception:

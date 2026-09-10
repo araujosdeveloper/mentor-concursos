@@ -25,8 +25,8 @@ required=(
   Dockerfile.validation
   database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
-  apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model.manifest.sha256 docs/AUTONOMIA-OPERACIONAL.md
-  docs/runbooks/EMBEDDINGS.md
+  apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
+  docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
   scripts/benchmark-knowledge.py
   apps/api/src/academic.py scripts/seed-reference-taxonomy.sh scripts/provision-roberto.sh
   tests/unit/test_academic.py
@@ -112,6 +112,10 @@ grep -Eq 'mentor-concursos-egress-uplink:' docker-compose.yml
 grep -Eq 'max-size:[[:space:]]*10m' docker-compose.yml
 grep -Eq 'max-file:[[:space:]]*"3"' docker-compose.yml
 grep -Eq 'ubuntu/squid:[^[:space:]]+@sha256:[0-9a-f]{64}' docker-compose.yml
+if grep -Eiq '(^|[-_])(cuda|cudnn|cublas|nccl|triton|nvidia)([-_]|$)' apps/embeddings/requirements-real.lock; then
+  echo "FAIL dependência CUDA no runtime de embeddings" >&2
+  exit 1
+fi
 grep -Eq 'api\.telegram\.org' infra/egress/allowlist-domains.txt
 grep -Eq '^\.chatgpt\.com$' infra/egress/allowlist-domains.txt
 grep -Eq '^auth\.openai\.com$' infra/egress/allowlist-domains.txt

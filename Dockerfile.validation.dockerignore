@@ -10,6 +10,7 @@ __pycache__
 .ruff_cache
 storage
 apps/embeddings/model
+apps/embeddings/model-cpu
 tests
 docs
 backups
