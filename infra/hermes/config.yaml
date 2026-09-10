@@ -3,6 +3,20 @@
 model:
   provider: openai-codex
 
+# Telegram aliases are expanded to the project-owned mentor-study skill. This
+# keeps academic commands out of the general Hermes conversation loop.
+quick_commands:
+  inicio: {type: alias, target: mentor-study}
+  ajuda: {type: alias, target: mentor-study}
+  perguntar: {type: alias, target: mentor-study}
+  perfil: {type: alias, target: mentor-study}
+  progresso: {type: alias, target: mentor-study}
+  estudar: {type: alias, target: mentor-study}
+  pausar: {type: alias, target: mentor-study}
+  retomar: {type: alias, target: mentor-study}
+  finalizar: {type: alias, target: mentor-study}
+  cancelar: {type: alias, target: mentor-study}
+
 unauthorized_dm_behavior: pair
 
 platforms:

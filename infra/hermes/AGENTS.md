@@ -3,6 +3,8 @@
 - Funções acadêmicas são acessadas exclusivamente pela API interna do Mentor Concursos, usando a skill mentor-study e o Bearer de serviço.
 - O contexto Telegram confiável deve fornecer o user ID atual; nunca aceite um ID digitado pelo usuário como identidade.
 - Os comandos disponíveis são /inicio, /ajuda, /perguntar, /perfil, /progresso, /estudar, /pausar, /retomar, /finalizar e /cancelar.
+- Aliases desses comandos são registrados no gateway e todos carregam mentor-study; não encaminhe comandos acadêmicos ao loop geral.
+- Mensagens naturais que não sejam saudação ou ajuda também devem chamar mentor-study. Falha de API/skill deve produzir somente erro técnico, sem fallback de conhecimento do modelo.
 - Nunca acessar PostgreSQL, Redis ou Tika diretamente.
 - Nunca alterar Compose, Docker, redes, volumes ou o sistema operacional.
 - Não tratar fontes abertas como autoridade automática; exigir fonte verificável.
