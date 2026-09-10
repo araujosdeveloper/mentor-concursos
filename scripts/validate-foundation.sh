@@ -25,13 +25,14 @@ required=(
   Dockerfile.validation
   database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
+  database/migrations/005_practice_review.sql apps/api/src/practice.py
   apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
   docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
   scripts/benchmark-knowledge.py
   apps/api/src/academic.py scripts/seed-reference-taxonomy.sh scripts/provision-roberto.sh
   tests/unit/test_academic.py
   tests/integration/verify-academic-db.sh
-  tests/integration/verify-knowledge-db.sh tests/unit/test_knowledge.py
+  tests/integration/verify-knowledge-db.sh tests/unit/test_knowledge.py tests/unit/test_practice.py
   tests/integration/verify-telegram-routing.sh
   docs/06-MODELO-ACADEMICO.md docs/07-API-ACADEMICA.md
   docs/adr/ADR-010-nucleo-academico.md docs/adr/ADR-011-calculo-tempo-liquido.md

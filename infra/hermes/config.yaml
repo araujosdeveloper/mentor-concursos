@@ -16,6 +16,12 @@ quick_commands:
   retomar: {type: alias, target: mentor-study}
   finalizar: {type: alias, target: mentor-study}
   cancelar: {type: alias, target: mentor-study}
+  questao: {type: alias, target: mentor-study}
+  responder: {type: alias, target: mentor-study}
+  simulado: {type: alias, target: mentor-study}
+  revisar: {type: alias, target: mentor-study}
+  erros: {type: alias, target: mentor-study}
+  desempenho: {type: alias, target: mentor-study}
 
 unauthorized_dm_behavior: pair
 
