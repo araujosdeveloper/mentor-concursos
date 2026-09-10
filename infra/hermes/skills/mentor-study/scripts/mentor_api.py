@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Small fixed-surface client for the internal Mentor Concursos API."""
 
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import argparse
@@ -80,11 +82,15 @@ def main() -> int:
     parser.add_argument(
         "action",
         choices=[
-            "inicio", "perfil", "progresso", "perguntar", "estudar",
-            "pausar", "retomar", "finalizar", "cancelar",
+        "inicio", "perfil", "progresso", "perguntar", "estudar",
+            "pausar", "retomar", "finalizar", "cancelar", "questao",
+            "responder", "simulado", "revisar", "erros", "desempenho",
         ],
     )
     parser.add_argument("--query", default="")
+    parser.add_argument("--option", default="")
+    parser.add_argument("--question-id", default="")
+    parser.add_argument("--quantity", default="5")
     args = parser.parse_args()
     try:
         context = _trusted_context()
@@ -111,14 +117,38 @@ def main() -> int:
             goals = _request("GET", "/api/v1/goals", context).get("items", [])
             current = _request("GET", "/api/v1/sessions/current", context)
             result = {"goals": goals, "current": current, "needs_configuration": not goals}
+        elif args.action == "questao":
+            result = _request("POST", "/api/v1/practice/question", context, {})
+        elif args.action == "responder":
+            if not args.question_id or not args.option:
+                raise RuntimeError("informe a questão e a alternativa")
+            result = _request("POST", "/api/v1/practice/answer", context,
+                              {"question_id": args.question_id, "option": args.option})
+        elif args.action == "simulado":
+            try:
+                quantity = int(args.quantity)
+            except ValueError:
+                raise RuntimeError("quantidade inválida") from None
+            result = _request("POST", "/api/v1/practice/simulation", context, {"quantity": quantity})
+        elif args.action == "revisar":
+            result = _request("GET", "/api/v1/practice/reviews/next", context)
+        elif args.action == "erros":
+            result = _request("GET", "/api/v1/practice/errors", context)
+        elif args.action == "desempenho":
+            result = _request("GET", "/api/v1/practice/performance", context)
+        elif args.action == "cancelar":
+            result = _request("POST", "/api/v1/practice/cancel", context, {"cancel": True})
+            if result.get("state") == "nothing_to_cancel":
+                current = _request("GET", "/api/v1/sessions/current", context)
+                if current:
+                    result = _request("POST", f"/api/v1/sessions/{current['id']}/cancel", context, {"version": current["version"]})
         else:
             current = _request("GET", "/api/v1/sessions/current", context)
             if not current:
                 result = {"state": "no_open_session"}
             else:
                 paths = {
-                    "pausar": "pause", "retomar": "resume",
-                    "finalizar": "complete", "cancelar": "cancel",
+                    "pausar": "pause", "retomar": "resume", "finalizar": "complete",
                 }
                 result = _request(
                     "POST", f"/api/v1/sessions/{current['id']}/{paths[args.action]}",

@@ -62,8 +62,21 @@ quick_commands:
   retomar: {type: alias, target: mentor-study}
   finalizar: {type: alias, target: mentor-study}
   cancelar: {type: alias, target: mentor-study}
+  questao: {type: alias, target: mentor-study}
+  responder: {type: alias, target: mentor-study}
+  simulado: {type: alias, target: mentor-study}
+  revisar: {type: alias, target: mentor-study}
+  erros: {type: alias, target: mentor-study}
+  desempenho: {type: alias, target: mentor-study}
 EOF
 fi
+
+# Reconcile newly added study aliases in an existing dedicated profile.
+for command_name in questao responder simulado revisar erros desempenho; do
+  if ! grep -q "^  ${command_name}:" "$DATA_DIR/config.yaml"; then
+    sed -i "/^  cancelar:/a\\  ${command_name}: {type: alias, target: mentor-study}" "$DATA_DIR/config.yaml"
+  fi
+done
 
 # The study skill is project-owned and communicates only with the internal API.
 # Seed it without overwriting operator state across restarts.

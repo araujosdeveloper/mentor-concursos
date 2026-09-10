@@ -38,6 +38,10 @@ usuário é mapeado pela API ao usuário acadêmico provisionado.
   explique que Roberto precisa configurar isso pela API, sem criar dados.
 - `/pausar`, `/retomar`, `/finalizar`, `/cancelar`: chame a ação correspondente;
   o script lê a sessão atual e envia a versão correta.
+- `/questao`: `mentor_api.py questao`; mostre as alternativas sem revelar o gabarito.
+- `/responder <letra>`: envie a letra e o `question_id` da questão atual para `mentor_api.py responder`; mostre correção, explicação e citação retornadas.
+- `/simulado <quantidade>`: `mentor_api.py simulado --quantity <quantidade>` (máximo 20).
+- `/revisar`: `mentor_api.py revisar`; `/erros`: `mentor_api.py erros`; `/desempenho`: `mentor_api.py desempenho`.
 
 Pergunta em linguagem natural pode usar `perguntar` quando for claramente uma
 dúvida acadêmica. Não use a skill para conversa casual ou para inventar plano.
