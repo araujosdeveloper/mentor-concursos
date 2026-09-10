@@ -46,6 +46,20 @@ seed_file /opt/mentor-hermes/AGENTS.md "$DATA_DIR/AGENTS.md"
 seed_file /opt/mentor-hermes/USER.md "$DATA_DIR/memories/USER.md"
 seed_file /opt/mentor-hermes/MEMORY.md "$DATA_DIR/memories/MEMORY.md"
 
+# The study skill is project-owned and communicates only with the internal API.
+# Seed it without overwriting operator state across restarts.
+if [ -d /opt/mentor-hermes/skills ]; then
+  mkdir -p "$DATA_DIR/skills"
+  find /opt/mentor-hermes/skills -type f | while IFS= read -r source_path; do
+    relative_path=${source_path#/opt/mentor-hermes/skills/}
+    target_path="$DATA_DIR/skills/$relative_path"
+    mkdir -p "$(dirname "$target_path")"
+    if [ ! -e "$target_path" ]; then
+      install -m 0600 "$source_path" "$target_path"
+    fi
+  done
+fi
+
 # The vendor image runs the gateway as the bundled hermes user. Keep the
 # entire dedicated state readable/writable only by that account.
 chown -R hermes:hermes "$DATA_DIR"
