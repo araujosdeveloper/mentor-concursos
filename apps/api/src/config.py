@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     readiness_timeout_seconds: float = Field(default=1.0, gt=0, le=10)
     rate_limit_requests: int = Field(default=60, ge=1, le=10_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    embeddings_url: str = "http://mentor-concursos-embeddings:8090"
     service_token_file: Path = Path("/run/secrets/mentor_api_service_token")
 
 

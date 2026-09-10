@@ -2,7 +2,7 @@
 
 Fundação versionada de um agente pessoal para a preparação de Roberto Araujo em concursos das áreas administrativa, fiscal e de tribunais. A matéria piloto é Direito Administrativo.
 
-Este repositório contém o núcleo técnico: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika e uma instância dedicada do Hermes Agent integrada ao bot privado do Telegram. Nenhuma regra acadêmica foi implementada nesta fase.
+Este repositório contém o núcleo técnico: API interna, worker, PostgreSQL com pgvector, Redis, Apache Tika, serviço offline de embeddings e uma instância dedicada do Hermes Agent integrada ao bot privado do Telegram. A Fase 3A aceita apenas fixtures sintéticas e não gera respostas acadêmicas.
 
 ## Requisitos
 
@@ -62,6 +62,10 @@ O provisionamento não cria objetivo, edital, concurso ou sessão. Mutações
 acadêmicas exigem Bearer, `X-Telegram-User-ID` de usuário já provisionado e
 `Idempotency-Key`; o tempo líquido de sessões é calculado no servidor.
 
+O pipeline de conhecimento usa migration 004, quarentena no volume
+`mentor_concursos_documents`, Tika, chunking determinístico e recuperação
+híbrida textual/vectorial. Nenhuma fonte real é ingerida nesta fase.
+
 ## Documentação
 
 - [Plano mestre](docs/00-PLANO-MESTRE.md)
@@ -79,3 +83,6 @@ acadêmicas exigem Bearer, `X-Telegram-User-ID` de usuário já provisionado e
 - [Runbook do gateway Telegram](docs/runbooks/HERMES-TELEGRAM.md)
 - [Modelo acadêmico](docs/06-MODELO-ACADEMICO.md)
 - [Runbook de migrações acadêmicas](docs/runbooks/MIGRATIONS-ACADEMIC.md)
+- [Pipeline de conhecimento](docs/08-PIPELINE-CONHECIMENTO.md)
+- [Avaliação sintética](docs/09-AVALIACAO-CONHECIMENTO.md)
+- [Autonomia operacional](docs/AUTONOMIA-OPERACIONAL.md)

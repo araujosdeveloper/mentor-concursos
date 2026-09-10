@@ -12,3 +12,7 @@ Estas regras se aplicam a todo o repositório.
 - Não crie conteúdo acadêmico como se fosse fonte real. Diferencie questões reais de autorais e registre a fonte.
 - Toda mudança deve passar por `./scripts/validate-foundation.sh` quando aplicável.
 - Decisões arquiteturais relevantes devem ser registradas em `docs/adr/`.
+- A autonomia operacional desta fase está limitada ao diretório do projeto,
+  aos recursos Docker nomeados `mentor-concursos_*` e a fixtures sintéticas;
+  nunca revelar secrets, acessar outros projetos, ingerir fontes reais ou
+  publicar portas. Consulte `docs/AUTONOMIA-OPERACIONAL.md`.

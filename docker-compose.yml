@@ -33,6 +33,7 @@ services:
       SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      EMBEDDINGS_URL: http://mentor-concursos-embeddings:8090
     secrets:
       - source: mentor_api_service_token
         target: mentor_api_service_token_source
@@ -41,6 +42,7 @@ services:
     depends_on:
       mentor-concursos-postgres: {condition: service_healthy}
       mentor-concursos-redis: {condition: service_healthy}
+      mentor-concursos-embeddings: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready', timeout=3)"]
       interval: 30s
@@ -71,6 +73,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       TIKA_URL: http://mentor-concursos-tika:9998
     networks: [mentor-concursos-core]
+    volumes:
+      - mentor_concursos_documents:/var/lib/mentor-concursos/documents
     depends_on:
       mentor-concursos-postgres: {condition: service_healthy}
       mentor-concursos-redis: {condition: service_healthy}
@@ -83,6 +87,35 @@ services:
       start_period: 10s
     cpus: "0.35"
     mem_limit: 512m
+
+  mentor-concursos-embeddings:
+    <<: *service-security
+    container_name: mentor-concursos-embeddings
+    build:
+      context: .
+      dockerfile: apps/embeddings/Dockerfile
+    image: mentor-concursos-embeddings:0.3.0@sha256:e5edaf916caf58f6edb8b81fc70da30ff82ee7caf6858e409fc171ae2c12b8a6
+    command: ["python", "-m", "apps.worker.src.embedding_service"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      EMBEDDINGS_BACKEND: real
+      MODEL_PATH: /app/model-cpu
+      MODEL_MANIFEST: /app/model-cpu.manifest.sha256
+    expose: ["8090"]
+    networks: [mentor-concursos-core]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cpus: "0.40"
+    mem_limit: 768m
 
   mentor-concursos-postgres:
     <<: *service-security
@@ -260,6 +293,7 @@ volumes:
   mentor_concursos_postgres_data: {name: mentor_concursos_postgres_data}
   mentor_concursos_redis_runtime: {name: mentor_concursos_redis_runtime}
   mentor_concursos_hermes_data: {name: mentor_concursos_hermes_data}
+  mentor_concursos_documents: {name: mentor_concursos_documents}
 
 secrets:
   mentor_api_service_token:

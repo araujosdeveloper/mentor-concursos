@@ -29,6 +29,17 @@ storage/inbox/*
 !storage/inbox/.gitkeep
 storage/processed/*
 !storage/processed/.gitkeep
+storage/quarantine/*
+!storage/quarantine/.gitkeep
+storage/accepted/*
+!storage/accepted/.gitkeep
+storage/extracted/*
+!storage/extracted/.gitkeep
+storage/rejected/*
+!storage/rejected/.gitkeep
+documents/
+apps/embeddings/model/
+apps/embeddings/model-cpu/
 .idea/
 .vscode/
 .DS_Store
