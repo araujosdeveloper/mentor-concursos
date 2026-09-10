@@ -46,6 +46,25 @@ seed_file /opt/mentor-hermes/AGENTS.md "$DATA_DIR/AGENTS.md"
 seed_file /opt/mentor-hermes/USER.md "$DATA_DIR/memories/USER.md"
 seed_file /opt/mentor-hermes/MEMORY.md "$DATA_DIR/memories/MEMORY.md"
 
+# Existing dedicated profiles predate the study aliases. Add the managed block
+# once, without touching OAuth, pairing, sessions or operator configuration.
+if ! grep -q '^quick_commands:' "$DATA_DIR/config.yaml"; then
+  cat >> "$DATA_DIR/config.yaml" <<'EOF'
+
+quick_commands:
+  inicio: {type: alias, target: mentor-study}
+  ajuda: {type: alias, target: mentor-study}
+  perguntar: {type: alias, target: mentor-study}
+  perfil: {type: alias, target: mentor-study}
+  progresso: {type: alias, target: mentor-study}
+  estudar: {type: alias, target: mentor-study}
+  pausar: {type: alias, target: mentor-study}
+  retomar: {type: alias, target: mentor-study}
+  finalizar: {type: alias, target: mentor-study}
+  cancelar: {type: alias, target: mentor-study}
+EOF
+fi
+
 # The study skill is project-owned and communicates only with the internal API.
 # Seed it without overwriting operator state across restarts.
 if [ -d /opt/mentor-hermes/skills ]; then

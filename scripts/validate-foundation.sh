@@ -32,6 +32,7 @@ required=(
   tests/unit/test_academic.py
   tests/integration/verify-academic-db.sh
   tests/integration/verify-knowledge-db.sh tests/unit/test_knowledge.py
+  tests/integration/verify-telegram-routing.sh
   docs/06-MODELO-ACADEMICO.md docs/07-API-ACADEMICA.md
   docs/adr/ADR-010-nucleo-academico.md docs/adr/ADR-011-calculo-tempo-liquido.md
   docs/adr/ADR-012-idempotencia-academica.md docs/runbooks/MIGRATIONS-ACADEMIC.md

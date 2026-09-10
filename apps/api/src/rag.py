@@ -41,6 +41,18 @@ def _tokens(value: str) -> set[str]:
     return {token for token in re.findall(r"[\wÀ-ÿ]+", value.casefold()) if len(token) >= 4}
 
 
+_GENERIC_QUERY_TERMS = {
+    "base", "diz", "sobre", "qual", "quais", "como", "pode", "podem",
+    "falar", "explique", "mostra", "mostre", "informa", "informar",
+}
+
+
+def _supported_query(query: str, row: dict[str, Any], explicit: str | None) -> bool:
+    terms = _tokens(query) - _GENERIC_QUERY_TERMS
+    overlap = len(terms & _tokens(row["text"]))
+    return bool(explicit and row["legal_locator"].rstrip(".") == explicit) or overlap >= 2
+
+
 def _citation(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "source_name": row["source_title"],
@@ -115,12 +127,11 @@ def answer(request: Request, body: RagRequest, user: UserDep, _: TokenDep, setti
             "citations": [],
             "request_id": request.state.request_id,
         }
-    significant = _tokens(body.query)
     lexical_evidence = [row for row in evidence if row.get("lexical_rank") is not None]
     explicit = _explicit_article_locator(body.query)
     supported = any(
         row.get("lexical_score", 0) >= 0.1
-        and (len(significant & _tokens(row["text"])) >= 1 or (explicit and row["legal_locator"].rstrip(".") == explicit))
+        and _supported_query(body.query, row, explicit)
         for row in lexical_evidence
     )
     citations = [_citation(row) for row in evidence[: min(3, len(evidence))]] if supported else []
