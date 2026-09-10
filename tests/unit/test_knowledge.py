@@ -3,7 +3,7 @@ from uuid import UUID
 
 import pytest
 
-from apps.api.src.knowledge import rrf_merge
+from apps.api.src.knowledge import _explicit_article_locator, rrf_merge
 from apps.worker.src import embedding_service
 from apps.worker.src.knowledge import (
     EMBEDDING_DIMENSIONS,
@@ -73,6 +73,12 @@ def test_rrf_calibrated_defaults_are_bounded_and_deterministic() -> None:
     )
     assert [row["id"] for row in result] == [first, second]
     assert result[0]["rrf_score"] > result[1]["rrf_score"]
+
+
+def test_explicit_article_signal_supports_suffix_identifiers() -> None:
+    assert _explicit_article_locator("consulte o artigo 2º") == "Art. 2º"
+    assert _explicit_article_locator("qual é o Art. 69-A?") == "Art. 69-A"
+    assert _explicit_article_locator("processo sem artigo explícito") is None
 
 
 def test_fixture_embedding_backend_is_rejected_for_production(

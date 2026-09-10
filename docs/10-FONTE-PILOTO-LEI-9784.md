@@ -46,8 +46,11 @@ anexo; a ação de abertura é apenas destino de página.
 
 A segmentação normativa preserva preâmbulo, artigo, parágrafos, incisos e
 localizador `Art. ...`; quando um artigo excede 1400 caracteres, a divisão usa
-linhas sem perder o identificador do artigo. Não há resumo, correção silenciosa
-ou remoção de negações/exceções. O algoritmo é `normative-article-v1`.
+linhas sem perder o identificador do artigo. Identificadores com sufixo, como
+`Art. 49-A.`, são reconhecidos; referências internas não viram novos artigos.
+O texto literal permanece separado do contexto de recuperação, que inclui norma,
+capítulo e localizador. Não há resumo, correção silenciosa ou remoção de
+negações/exceções. O algoritmo corretivo é `normative-article-v2`.
 
 ## Avaliação isolada
 

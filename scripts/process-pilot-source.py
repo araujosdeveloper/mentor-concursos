@@ -9,6 +9,7 @@ versão em pending_review. Nunca promove conteúdo a indexed.
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import os
@@ -23,7 +24,7 @@ from psycopg.rows import dict_row
 
 from apps.worker.src.knowledge import MODEL_ID, MODEL_REVISION, normalize_text
 
-ARTICLE_RE = re.compile(r"(?m)^(Art\.\s+\d+[ºo]?\.?)(.*?)(?=^Art\.\s+\d+[ºo]?\.?|\Z)", re.S)
+ARTICLE_RE = re.compile(r"(?m)^(Art\.\s+\d+[ºo]?(?:\s*-\s*[A-Za-z])?\.?)(.*?)(?=^Art\.\s+\d+[ºo]?(?:\s*-\s*[A-Za-z])?\.?|\Z)", re.S)
 MAX_CHARS = 1400
 
 
@@ -61,10 +62,18 @@ def normative_chunks(text: str) -> list[dict[str, object]]:
         raise RuntimeError("articles_not_detected")
     preamble = normalized[: matches[0].start()].strip()
     blocks = ([preamble] if preamble else []) + [match.group(0).strip() for match in matches]
+    headings: list[str] = []
+    for line in normalized[: matches[0].start()].splitlines():
+        if re.match(r"^(CAPÍTULO|SEÇÃO)\b", line.strip(), re.I):
+            headings.append(line.strip())
     result: list[dict[str, object]] = []
-    for block in blocks:
-        locator_match = re.match(r"(Art\.\s+\d+[ºo]?\.?)", block)
+    for block_index, block in enumerate(blocks):
+        locator_match = re.match(r"(Art\.\s+\d+[ºo]?(?:\s*-\s*[A-Za-z])?\.?)", block)
         locator = locator_match.group(1) if locator_match else "title-and-preamble"
+        if block_index and matches:
+            prefix = normalized[: matches[block_index - 1].start()]
+            headings = [line.strip() for line in prefix.splitlines() if re.match(r"^(CAPÍTULO|SEÇÃO)\b", line.strip(), re.I)]
+        context = "Lei nº 9.784/1999 | " + " | ".join(headings[-2:] + ([locator] if locator != "title-and-preamble" else []))
         if len(block) <= MAX_CHARS:
             pieces = [block]
         else:
@@ -84,7 +93,8 @@ def normative_chunks(text: str) -> list[dict[str, object]]:
             value = normalize_text(piece)
             result.append({
                 "text": value,
-                "normalized_text": value,
+                "normalized_text": f"{context}\n{value}",
+                "retrieval_context": context,
                 "locator": locator,
                 "section_path": [locator],
                 "content_sha256": hashlib.sha256(value.encode()).hexdigest(),
@@ -132,6 +142,7 @@ def main() -> None:
     # Lotes pequenos mantêm a margem de memória do runtime ONNX aprovado.
     for offset in range(0, len(chunks), 2):
         vectors.extend(embed([str(item["text"]) for item in chunks[offset : offset + 2]])["vectors"])
+        gc.collect()
     with db() as connection, connection.transaction():
         version = connection.execute("SELECT * FROM mentor_concursos.knowledge_source_versions WHERE id=%s FOR UPDATE", (version_id,)).fetchone()
         if not version or version["sha256"] != digest or version["status"] not in {"quarantined", "validated", "extracted", "normalized", "chunked", "embedded"}:
@@ -139,9 +150,11 @@ def main() -> None:
         subject = connection.execute("SELECT id FROM mentor_concursos.subjects WHERE name='Direito Administrativo'").fetchone()
         if not subject:
             raise RuntimeError("subject_not_found")
-        connection.execute("UPDATE mentor_concursos.knowledge_source_versions SET status='validated', extraction_metadata=extraction_metadata || %s::jsonb WHERE id=%s", (json.dumps({"extracted_sha256": hashlib.sha256(normalized.encode()).hexdigest(), "extracted_characters": len(normalized), "tika_version": "3.2.2", "article_count": len(re.findall(r"(?m)^Art\.", normalized)), "extracted_storage_key": f"extracted/{digest}.txt"}), version_id))
+        raw_article_count = len(re.findall(r"(?m)^Art\.\s+\d+[ºo]?(?:\s*-\s*[A-Za-z])?\.?", normalized))
+        structural_article_ids = sorted({str(item["locator"]) for item in chunks if item["locator"] != "title-and-preamble"})
+        connection.execute("UPDATE mentor_concursos.knowledge_source_versions SET status='validated', extraction_metadata=extraction_metadata || %s::jsonb WHERE id=%s", (json.dumps({"extracted_sha256": hashlib.sha256(normalized.encode()).hexdigest(), "extracted_characters": len(normalized), "tika_version": "3.2.2", "raw_article_identifiers": raw_article_count, "structural_article_identifiers": len(structural_article_ids), "structural_article_ids": structural_article_ids, "extracted_storage_key": f"extracted/{digest}.txt"}), version_id))
         for ordinal, (chunk, vector) in enumerate(zip(chunks, vectors, strict=True)):
-            row = connection.execute("INSERT INTO mentor_concursos.knowledge_chunks(source_version_id,subject_id,ordinal,text,normalized_text,content_sha256,section_path,legal_locator,character_count,token_count,status,metadata) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending_review',%s) ON CONFLICT (source_version_id,ordinal) DO UPDATE SET text=EXCLUDED.text RETURNING id", (version_id, subject["id"], ordinal, chunk["text"], chunk["normalized_text"], chunk["content_sha256"], chunk["section_path"], chunk["locator"], chunk["character_count"], chunk["token_count"], json.dumps({"prompt_injection_suspected": chunk["prompt_injection_suspected"], "algorithm": "normative-article-v1"}))).fetchone()
+            row = connection.execute("INSERT INTO mentor_concursos.knowledge_chunks(source_version_id,subject_id,ordinal,text,normalized_text,content_sha256,section_path,legal_locator,character_count,token_count,status,metadata) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending_review',%s) ON CONFLICT (source_version_id,ordinal) DO UPDATE SET text=EXCLUDED.text,normalized_text=EXCLUDED.normalized_text,metadata=EXCLUDED.metadata RETURNING id", (version_id, subject["id"], ordinal, chunk["text"], chunk["normalized_text"], chunk["content_sha256"], chunk["section_path"], chunk["locator"], chunk["character_count"], chunk["token_count"], json.dumps({"prompt_injection_suspected": chunk["prompt_injection_suspected"], "algorithm": "normative-article-v2", "retrieval_context": chunk["retrieval_context"]}))).fetchone()
             literal = "[" + ",".join(str(float(value)) for value in vector) + "]"
             connection.execute("INSERT INTO mentor_concursos.knowledge_embeddings(chunk_id,model_id,model_revision,dimensions,embedding,normalized,content_sha256) VALUES (%s,%s,%s,384,%s::vector,true,%s) ON CONFLICT (chunk_id,model_id,model_revision) DO NOTHING", (row["id"], MODEL_ID, MODEL_REVISION, literal, chunk["content_sha256"]))
         connection.execute("UPDATE mentor_concursos.knowledge_source_versions SET status='pending_review' WHERE id=%s", (version_id,))

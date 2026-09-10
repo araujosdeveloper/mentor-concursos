@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import urllib.request
 import uuid
 from typing import Annotated, Any
@@ -73,6 +74,15 @@ def rrf_merge(lexical: list[dict[str, Any]], vector: list[dict[str, Any]], limit
     for item in merged.values():
         item["rrf_score"] = (lexical_weight / (k + item.get("lexical_rank", 10_000))) + (1 / (k + item.get("vector_rank", 10_000)))
     return sorted(merged.values(), key=lambda row: (-row["rrf_score"], str(row["id"])))[:limit]
+
+
+def _explicit_article_locator(query: str) -> str | None:
+    """Extract a generic article reference as a deterministic lexical signal."""
+    match = re.search(r"\bart(?:igo)?\.?\s*(\d+[ºo]?(?:\s*-\s*[A-Za-z])?)\b", query, re.I)
+    if not match:
+        return None
+    number = re.sub(r"\s+", " ", match.group(1).strip())
+    return f"Art. {number}"
 
 
 def _embed(query: str, settings: Settings) -> tuple[list[float], str, str]:
@@ -184,9 +194,16 @@ def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep
             JOIN mentor_concursos.knowledge_source_versions v ON v.id=c.source_version_id
             JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id
             JOIN mentor_concursos.knowledge_embeddings e ON e.chunk_id=c.id"""
+        explicit_locator = _explicit_article_locator(body.query)
+        lexical_params: list[Any] = [body.query, *params, body.query]
+        article_order = "1"
+        if explicit_locator:
+            article_order = "CASE WHEN regexp_replace(c.legal_locator, '\\.$', '')=%s THEN 0 ELSE 1 END"
+            lexical_params.append(explicit_locator)
+        lexical_params.append(body.limit * 4)
         lexical = connection.execute(
-            f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,ts_rank_cd(c.search_vector, websearch_to_tsquery('portuguese', %s)) AS lexical_score {common} WHERE {where} AND c.search_vector @@ websearch_to_tsquery('portuguese', %s) ORDER BY lexical_score DESC,c.id LIMIT %s",
-            [body.query, *params, body.query, body.limit * 4],
+            f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,ts_rank_cd(c.search_vector, websearch_to_tsquery('portuguese', replace(%s, ' ', ' OR '))) AS lexical_score {common} WHERE {where} AND c.search_vector @@ websearch_to_tsquery('portuguese', replace(%s, ' ', ' OR ')) ORDER BY {article_order},lexical_score DESC,c.id LIMIT %s",
+            lexical_params,
         ).fetchall()
         vector_rows = connection.execute(
             f"SELECT c.id,c.text,c.normalized_text,c.ordinal,c.legal_locator,c.content_sha256,s.id AS source_id,v.id AS source_version_id,s.title AS source_title,v.version_label,1 - (e.embedding <=> %s::vector) AS vector_score {common} WHERE {where} ORDER BY vector_score DESC,c.id LIMIT %s",
