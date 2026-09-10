@@ -75,6 +75,12 @@ if [ -d /opt/mentor-hermes/skills ]; then
     mkdir -p "$(dirname "$target_path")"
     if [ ! -e "$target_path" ]; then
       install -m 0600 "$source_path" "$target_path"
+    elif [ "$relative_path" = "mentor-study/scripts/mentor_api.py" ] || [ "$relative_path" = "mentor-study/SKILL.md" ]; then
+      # These project-owned routing contracts are safe to reconcile on every
+      # restart; OAuth, pairing, memory and operator files remain untouched.
+      if ! cmp -s "$source_path" "$target_path"; then
+        install -m 0600 "$source_path" "$target_path"
+      fi
     fi
   done
 fi
