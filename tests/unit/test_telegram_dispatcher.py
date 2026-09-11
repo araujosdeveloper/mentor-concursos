@@ -59,3 +59,29 @@ def test_gateway_literal_slash_command_is_normalized() -> None:
     assert Runner._handle_message.__module__ == dispatcher.__name__
     assert asyncio.run(Runner()._handle_message(Event())) == "handled"
     assert seen == ["questao"]
+
+
+def test_question_idempotency_key_changes_per_telegram_update() -> None:
+    dispatcher = _module()
+    captured = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"id":"question"}'
+
+    def fake_urlopen(request, timeout):
+        captured.append(request.headers["Idempotency-key"])
+        return Response()
+
+    dispatcher._secret = lambda _path: "test-secret"
+    dispatcher.urllib.request.urlopen = fake_urlopen
+    base = {"user_id": "1", "chat_id": "1", "request_id": "m1"}
+    dispatcher._call("POST", "/api/v1/practice/question", base, {})
+    dispatcher._call("POST", "/api/v1/practice/question", {**base, "request_id": "m2"}, {})
+    assert captured[0] != captured[1]

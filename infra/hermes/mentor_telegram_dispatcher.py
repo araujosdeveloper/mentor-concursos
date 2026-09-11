@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
@@ -33,6 +34,7 @@ COMMANDS = {
 }
 CURRENT = {}
 INSTALLED = False
+LOGGER = logging.getLogger("mentor.telegram_dispatcher")
 
 
 def _secret(path):
@@ -94,7 +96,7 @@ def _call(method, path, ctx, payload=None):
                 "Idempotency-Key": str(
                     uuid.uuid5(
                         uuid.NAMESPACE_URL,
-                        f"mentor:{ctx['user_id']}:{method}:{path}:{body.decode()}",
+                        f"mentor:{ctx['user_id']}:{ctx['request_id']}:{method}:{path}:{body.decode()}",
                     )
                 ),
             }
@@ -113,7 +115,16 @@ def _call(method, path, ctx, payload=None):
             timeout=12,
         ) as r:
             return json.loads(r.read())
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        json.JSONDecodeError,
+    ) as error:
+        if isinstance(error, urllib.error.HTTPError):
+            LOGGER.warning("mentor_api_request_failed status=%s", error.code)
+        else:
+            LOGGER.warning("mentor_api_request_failed class=%s", type(error).__name__)
         raise RuntimeError("operação acadêmica indisponível") from None
 
 
@@ -205,7 +216,8 @@ async def dispatch(event, command):
                     {"version": current["version"]},
                 )
         return _format(command, result, key)
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, RuntimeError, ValueError) as error:
+        LOGGER.warning("academic_command_failed class=%s", type(error).__name__)
         return "Erro técnico temporário. Nenhuma operação acadêmica foi realizada."
 
 
