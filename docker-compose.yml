@@ -187,6 +187,7 @@ services:
       TZ: ${TZ:-America/Sao_Paulo}
       MENTOR_API_SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
       MENTOR_CONTEXT_HMAC_KEY_FILE: /run/secrets/hermes_context_hmac_key
+      PYTHONPATH: /opt/mentor-hermes
       HERMES_HOME: /opt/data
       HOME: /opt/data/home
       HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
@@ -213,6 +214,7 @@ services:
       - ./infra/hermes/MEMORY.md:/opt/mentor-hermes/MEMORY.md:ro
       - ./infra/hermes/AGENTS.md:/opt/mentor-hermes/AGENTS.md:ro
       - ./infra/hermes/skills:/opt/mentor-hermes/skills:ro
+      - ./infra/hermes/sitecustomize.py:/opt/mentor-hermes/sitecustomize.py:ro
     tmpfs:
       - /run:size=16m,mode=0755,exec
       - /tmp:size=32m,mode=1777
