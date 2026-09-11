@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 
 def _module():
     path = Path(__file__).parents[2] / "infra" / "hermes" / "mentor_telegram_dispatcher.py"
+    sys.path.insert(0, str(path.parent))
     spec = importlib.util.spec_from_file_location("mentor_telegram_dispatcher_test", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
