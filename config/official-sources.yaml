@@ -1,0 +1,13 @@
+sources:
+  lei-9784-camara:
+    organization: "Câmara dos Deputados"
+    host: "www2.camara.leg.br"
+    type: "legislacao_federal"
+    authority: "primary_official"
+    canonical_url: "https://www2.camara.leg.br/legin/fed/lei/1999/lei-9784-29-janeiro-1999-322239-norma-pl.html"
+    update_strategy: "conditional_headers_then_sha256"
+    minimum_check_interval: "7d"
+    formats: ["application/pdf", "text/plain"]
+    max_bytes: 20971520
+    max_redirects: 3
+    enabled: true
