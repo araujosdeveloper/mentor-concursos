@@ -32,7 +32,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
       CONTEXT_HMAC_KEY_FILE: /run/secrets/hermes_context_hmac_key
-      REQUIRE_SIGNED_CONTEXT: ${REQUIRE_SIGNED_CONTEXT:-false}
+      REQUIRE_SIGNED_CONTEXT: ${REQUIRE_SIGNED_CONTEXT:-true}
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       EMBEDDINGS_URL: http://mentor-concursos-embeddings:8090

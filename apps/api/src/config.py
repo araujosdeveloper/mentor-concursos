@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     require_signed_context: bool = False
     signed_context_max_age_seconds: int = Field(default=60, ge=1, le=300)
     signed_context_replay_ttl_seconds: int = Field(default=120, ge=60, le=600)
+
+    @model_validator(mode="after")
+    def production_requires_signed_context(self) -> "Settings":
+        if self.app_env.lower() == "production" and not self.require_signed_context:
+            raise ValueError("REQUIRE_SIGNED_CONTEXT must be enabled in production")
+        return self
 
 
 @lru_cache

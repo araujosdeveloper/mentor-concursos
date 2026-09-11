@@ -31,6 +31,7 @@ class RagRequest(StrictModel):
     source_id: uuid.UUID | None = None
     source_version_id: uuid.UUID | None = None
     limit: int = Field(default=5, ge=1, le=10)
+    min_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 def _injection(query: str) -> bool:
@@ -111,7 +112,8 @@ def _retrieve(query: str, user_id: uuid.UUID, body: RagRequest, settings: Settin
             s.id source_id,v.id source_version_id,s.title source_title,s.canonical_url,
             1-(e.embedding <=> %s::vector) vector_score {common} WHERE {where}
             ORDER BY vector_score DESC,c.id LIMIT %s""", [literal, *params, body.limit * 4]).fetchall()
-    return rrf_merge([dict(row) for row in lexical], [dict(row) for row in vector_rows], body.limit, k=20, lexical_weight=1.0), model_id, revision
+    merged = rrf_merge([dict(row) for row in lexical], [dict(row) for row in vector_rows], body.limit, k=20, lexical_weight=1.0)
+    return [row for row in merged if max(float(row.get("lexical_score") or 0), float(row.get("vector_score") or 0)) >= body.min_score], model_id, revision
 
 
 @router.post("/answer")

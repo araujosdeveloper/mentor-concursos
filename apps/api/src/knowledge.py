@@ -163,9 +163,11 @@ def get_job(job_id: uuid.UUID, user: UserDep, settings: Annotated[Settings, Depe
 @router.post("/versions/{version_id}/review")
 def review_version(version_id: uuid.UUID, request: Request, body: ReviewCreate, user: UserDep, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
     def operation(connection: psycopg.Connection) -> tuple[int, dict[str, Any]]:
-        row = connection.execute("SELECT v.*,s.owner_user_id FROM mentor_concursos.knowledge_source_versions v JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id WHERE v.id=%s AND s.owner_user_id=%s FOR UPDATE", (version_id, user.id)).fetchone()
+        row = connection.execute("SELECT v.*,s.owner_user_id,u.role FROM mentor_concursos.knowledge_source_versions v JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id JOIN mentor_concursos.users u ON u.id=%s WHERE v.id=%s AND s.owner_user_id=%s FOR UPDATE", (user.id, version_id, user.id)).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Versão não encontrada")
+        if row["role"] not in {"source_reviewer", "admin"}:
+            raise HTTPException(status_code=403, detail="Permissão insuficiente")
         if body.decision == "approved" and row["status"] not in {"pending_review", "embedded", "indexed"}:
             raise HTTPException(status_code=409, detail="Versão não pronta para aprovação")
         new_status = body.decision if body.decision != "approved" else "indexed"
@@ -180,7 +182,7 @@ def review_version(version_id: uuid.UUID, request: Request, body: ReviewCreate, 
 def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, Any]:
     vector, model_id, revision = _embed(body.query, settings)
     vector_literal = "[" + ",".join(str(float(value)) for value in vector) + "]"
-    filters = ["c.status='indexed'", "v.status='indexed'", "s.owner_user_id=%s"]
+    filters = ["c.status='indexed'", "v.status='indexed'", "s.status='approved'", "s.owner_user_id=%s"]
     params: list[Any] = [user.id]
     if body.subject_id:
         filters.append("c.subject_id=%s")
@@ -214,7 +216,8 @@ def retrieve(request: Request, body: RetrieveRequest, user: UserDep, _: TokenDep
         # torna o resultado estável.
         k = 20
         lexical_weight = 4.0
-        returned = rrf_merge(lexical, vector_rows, body.limit, k, lexical_weight)
+        returned = [row for row in rrf_merge(lexical, vector_rows, body.limit, k, lexical_weight)
+                    if max(float(row.get("lexical_score") or 0), float(row.get("vector_score") or 0)) >= body.min_score]
         scores = [{"chunk_id": str(row["id"]), "rrf_score": row["rrf_score"], "lexical_rank": row.get("lexical_rank"), "vector_rank": row.get("vector_rank"), "lexical_score": row.get("lexical_score"), "vector_score": row.get("vector_score")} for row in returned]
         query_hash = hashlib.sha256(body.query.strip().lower().encode()).hexdigest()
         connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, query_hash, json.dumps({"subject_id": str(body.subject_id) if body.subject_id else None, "topic_id": str(body.topic_id) if body.topic_id else None, "rrf_k": k, "lexical_weight": lexical_weight}), [row["id"] for row in returned], json.dumps(scores), model_id, revision, request.state.request_id))
