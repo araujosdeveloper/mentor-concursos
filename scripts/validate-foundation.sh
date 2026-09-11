@@ -27,6 +27,7 @@ required=(
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
   database/migrations/006_official_source_refresh.sql apps/worker/src/source_refresh.py
   database/migrations/007_source_review_rbac.sql
+  docs/adr/ADR-017-consolidacao-refresh-seguro.md
   database/migrations/005_practice_review.sql apps/api/src/practice.py
   apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
   docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
