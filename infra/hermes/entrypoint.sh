@@ -52,29 +52,33 @@ if ! grep -q '^quick_commands:' "$DATA_DIR/config.yaml"; then
   cat >> "$DATA_DIR/config.yaml" <<'EOF'
 
 quick_commands:
-  inicio: {type: alias, target: mentor-study}
-  ajuda: {type: alias, target: mentor-study}
-  perguntar: {type: alias, target: mentor-study}
-  perfil: {type: alias, target: mentor-study}
-  progresso: {type: alias, target: mentor-study}
-  estudar: {type: alias, target: mentor-study}
-  pausar: {type: alias, target: mentor-study}
-  retomar: {type: alias, target: mentor-study}
-  finalizar: {type: alias, target: mentor-study}
-  cancelar: {type: alias, target: mentor-study}
-  questao: {type: alias, target: mentor-study}
-  responder: {type: alias, target: mentor-study}
-  simulado: {type: alias, target: mentor-study}
-  revisar: {type: alias, target: mentor-study}
-  erros: {type: alias, target: mentor-study}
-  desempenho: {type: alias, target: mentor-study}
+  inicio: {type: alias, target: "mentor-study /inicio"}
+  ajuda: {type: alias, target: "mentor-study /ajuda"}
+  perguntar: {type: alias, target: "mentor-study /perguntar"}
+  perfil: {type: alias, target: "mentor-study /perfil"}
+  progresso: {type: alias, target: "mentor-study /progresso"}
+  estudar: {type: alias, target: "mentor-study /estudar"}
+  pausar: {type: alias, target: "mentor-study /pausar"}
+  retomar: {type: alias, target: "mentor-study /retomar"}
+  finalizar: {type: alias, target: "mentor-study /finalizar"}
+  cancelar: {type: alias, target: "mentor-study /cancelar"}
+  questao: {type: alias, target: "mentor-study /questao"}
+  responder: {type: alias, target: "mentor-study /responder"}
+  simulado: {type: alias, target: "mentor-study /simulado"}
+  revisar: {type: alias, target: "mentor-study /revisar"}
+  erros: {type: alias, target: "mentor-study /erros"}
+  desempenho: {type: alias, target: "mentor-study /desempenho"}
 EOF
 fi
 
-# Reconcile newly added study aliases in an existing dedicated profile.
-for command_name in questao responder simulado revisar erros desempenho; do
-  if ! grep -q "^  ${command_name}:" "$DATA_DIR/config.yaml"; then
-    sed -i "/^  cancelar:/a\\  ${command_name}: {type: alias, target: mentor-study}" "$DATA_DIR/config.yaml"
+# Reconcile all managed study aliases in an existing dedicated profile. The
+# original slash command is part of the target so the skill receives an
+# explicit operation instead of entering its generic conversational mode.
+for command_name in inicio ajuda perguntar perfil progresso estudar pausar retomar finalizar cancelar questao responder simulado revisar erros desempenho; do
+  if grep -q "^  ${command_name}:" "$DATA_DIR/config.yaml"; then
+    sed -i "s#^  ${command_name}:.*#  ${command_name}: {type: alias, target: \"mentor-study /${command_name}\"}#" "$DATA_DIR/config.yaml"
+  else
+    printf '  %s: {type: alias, target: "mentor-study /%s"}\n' "$command_name" "$command_name" >> "$DATA_DIR/config.yaml"
   fi
 done
 

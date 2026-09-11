@@ -29,6 +29,11 @@ usuário é mapeado pela API ao usuário acadêmico provisionado.
 
 ## Comandos
 
+Os aliases do gateway preservam o comando original como uma instrução explícita
+(por exemplo, `/questao`); execute somente a operação correspondente abaixo.
+Se a operação não puder ser executada, retorne o erro técnico e nunca entre em
+modo conversacional genérico ou use conhecimento externo.
+
 - `/inicio`: `mentor_api.py inicio`
 - `/ajuda`: responda com a lista desta seção, sem chamada externa.
 - `/perguntar <pergunta>`: `mentor_api.py perguntar --query <pergunta>`.
