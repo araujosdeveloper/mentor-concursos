@@ -63,7 +63,7 @@ def test_gateway_literal_slash_command_is_normalized() -> None:
     assert seen == ["questao"]
 
 
-def test_question_idempotency_key_changes_per_telegram_update() -> None:
+def test_question_idempotency_key_changes_per_telegram_update(monkeypatch) -> None:
     dispatcher = _module()
     captured = []
 
@@ -81,8 +81,8 @@ def test_question_idempotency_key_changes_per_telegram_update() -> None:
         captured.append(request.headers["Idempotency-key"])
         return Response()
 
-    dispatcher._secret = lambda _path: "test-secret"
-    dispatcher.urllib.request.urlopen = fake_urlopen
+    monkeypatch.setattr(dispatcher, "_secret", lambda _path: "test-secret")
+    monkeypatch.setattr(dispatcher.urllib.request, "urlopen", fake_urlopen)
     base = {"user_id": "1", "chat_id": "1", "request_id": "m1"}
     dispatcher._call("POST", "/api/v1/practice/question", base, {})
     dispatcher._call("POST", "/api/v1/practice/question", {**base, "request_id": "m2"}, {})
@@ -119,7 +119,7 @@ def test_answer_formats_real_api_contract_without_internal_identifiers() -> None
     assert "3224ae78" not in rendered
 
 
-def test_answer_retry_uses_same_idempotent_request_and_formats_again() -> None:
+def test_answer_retry_uses_same_idempotent_request_and_formats_again(monkeypatch) -> None:
     dispatcher = _module()
     dispatcher.CURRENT[("1", "1")] = "question-id"
     calls = []
@@ -135,7 +135,12 @@ def test_answer_retry_uses_same_idempotent_request_and_formats_again() -> None:
             "next_review_at": "amanhã",
         }
 
-    dispatcher._call = fake_call
+    monkeypatch.setattr(dispatcher, "_call", fake_call)
+
+    async def immediate_to_thread(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(dispatcher.asyncio, "to_thread", immediate_to_thread)
 
     class Event:
         source = type(

@@ -20,7 +20,7 @@ if [[ ! -e .env ]]; then
     printf '%s\n' 'POSTGRES_USER=mentor_app'
     printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
     printf 'REDIS_PASSWORD=%s\n' "$redis_password"
-    printf '%s\n' 'APP_ENV=production' 'LOG_LEVEL=INFO' 'TZ=America/Sao_Paulo' 'REQUIRE_SIGNED_CONTEXT=false'
+    printf '%s\n' 'APP_ENV=production' 'LOG_LEVEL=INFO' 'TZ=America/Sao_Paulo' 'REQUIRE_SIGNED_CONTEXT=true'
   } >.env
 fi
 chmod 600 .env
