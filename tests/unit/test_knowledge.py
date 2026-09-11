@@ -3,7 +3,7 @@ from uuid import UUID
 
 import pytest
 
-from apps.api.src.knowledge import _explicit_article_locator, rrf_merge
+from apps.api.src.knowledge import _explicit_article_locator, filter_min_score, rrf_merge
 from apps.api.src.rag import _injection, _supported_query, verify_grounding
 from apps.worker.src import embedding_service
 from apps.worker.src.knowledge import (
@@ -76,6 +76,18 @@ def test_rrf_calibrated_defaults_are_bounded_and_deterministic() -> None:
     assert result[0]["rrf_score"] > result[1]["rrf_score"]
 
 
+def test_min_score_vector_boundaries_preserve_zero_and_include_exact_value() -> None:
+    rows = [
+        {"id": UUID(int=1), "lexical_score": 0.99, "vector_score": 0.49},
+        {"id": UUID(int=2), "lexical_score": 0.1, "vector_score": 0.5},
+        {"id": UUID(int=3), "lexical_score": 0.1, "vector_score": 0.51},
+    ]
+    assert filter_min_score(rows, 0) == rows
+    assert [row["id"] for row in filter_min_score(rows, 0.5)] == [UUID(int=2), UUID(int=3)]
+    assert [row["id"] for row in filter_min_score(rows, 0.5001)] == [UUID(int=3)]
+    assert filter_min_score(rows, 0.52) == []
+
+
 def test_explicit_article_signal_supports_suffix_identifiers() -> None:
     assert _explicit_article_locator("consulte o artigo 2º") == "Art. 2º"
     assert _explicit_article_locator("qual é o Art. 69-A?") == "Art. 69-A"
@@ -91,23 +103,52 @@ def test_fixture_embedding_backend_is_rejected_for_production(
 
 
 def test_grounding_verifier_rejects_forged_citations() -> None:
-    evidence = [{
-        "id": UUID("00000000-0000-0000-0000-000000000001"),
-        "legal_locator": "Art. 1º",
-        "content_sha256": "a" * 64,
-    }]
-    valid = {"state": "answered", "citations": [{
-        "chunk_id": str(evidence[0]["id"]), "locator": "Art. 1º", "hash": "a" * 64,
-    }]}
+    evidence = [
+        {
+            "id": UUID("00000000-0000-0000-0000-000000000001"),
+            "legal_locator": "Art. 1º",
+            "content_sha256": "a" * 64,
+        }
+    ]
+    valid = {
+        "state": "answered",
+        "citations": [
+            {
+                "chunk_id": str(evidence[0]["id"]),
+                "locator": "Art. 1º",
+                "hash": "a" * 64,
+            }
+        ],
+    }
     assert verify_grounding(valid, evidence) == valid
     with pytest.raises(ValueError, match="citation_provenance_mismatch"):
-        verify_grounding({"state": "answered", "citations": [{
-            "chunk_id": str(evidence[0]["id"]), "locator": "Art. 2º", "hash": "a" * 64,
-        }]}, evidence)
+        verify_grounding(
+            {
+                "state": "answered",
+                "citations": [
+                    {
+                        "chunk_id": str(evidence[0]["id"]),
+                        "locator": "Art. 2º",
+                        "hash": "a" * 64,
+                    }
+                ],
+            },
+            evidence,
+        )
     with pytest.raises(ValueError, match="citation_not_in_evidence"):
-        verify_grounding({"state": "answered", "citations": [{
-            "chunk_id": str(UUID(int=2)), "locator": "Art. 1º", "hash": "a" * 64,
-        }]}, evidence)
+        verify_grounding(
+            {
+                "state": "answered",
+                "citations": [
+                    {
+                        "chunk_id": str(UUID(int=2)),
+                        "locator": "Art. 1º",
+                        "hash": "a" * 64,
+                    }
+                ],
+            },
+            evidence,
+        )
 
 
 def test_rag_treats_document_instructions_as_data_and_requires_citation() -> None:

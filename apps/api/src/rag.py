@@ -20,7 +20,7 @@ from pydantic import Field
 
 from .academic import StrictModel, TokenDep, UserDep, _connect
 from .config import Settings, get_settings
-from .knowledge import _embed, _explicit_article_locator, rrf_merge
+from .knowledge import _embed, _explicit_article_locator, filter_min_score, rrf_merge
 
 router = APIRouter(prefix="/api/v1/rag", tags=["grounded-rag"])
 
@@ -113,7 +113,7 @@ def _retrieve(query: str, user_id: uuid.UUID, body: RagRequest, settings: Settin
             1-(e.embedding <=> %s::vector) vector_score {common} WHERE {where}
             ORDER BY vector_score DESC,c.id LIMIT %s""", [literal, *params, body.limit * 4]).fetchall()
     merged = rrf_merge([dict(row) for row in lexical], [dict(row) for row in vector_rows], body.limit, k=20, lexical_weight=1.0)
-    return [row for row in merged if max(float(row.get("lexical_score") or 0), float(row.get("vector_score") or 0)) >= body.min_score], model_id, revision
+    return filter_min_score(merged, body.min_score), model_id, revision
 
 
 @router.post("/answer")
@@ -147,5 +147,5 @@ def answer(request: Request, body: RagRequest, user: UserDep, _: TokenDep, setti
     except ValueError as exc:
         raise HTTPException(status_code=500, detail="Falha de verificação de fundamentação") from exc
     with _connect(settings) as connection, connection.transaction():
-        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, hashlib.sha256(body.query.strip().lower().encode()).hexdigest(), json.dumps({"rag": True, "source_id": str(body.source_id) if body.source_id else None}), [row["id"] for row in evidence], json.dumps([_citation(row) for row in evidence]), model_id, revision, request.state.request_id))
+        connection.execute("INSERT INTO mentor_concursos.retrieval_audit(user_id,query_hash,filters,returned_chunk_ids,scores,model_id,model_revision,request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (user.id, hashlib.sha256(body.query.strip().lower().encode()).hexdigest(), json.dumps({"rag": True, "source_id": str(body.source_id) if body.source_id else None, "min_score": body.min_score, "min_score_signal": "vector_score"}), [row["id"] for row in evidence], json.dumps([_citation(row) for row in evidence]), model_id, revision, request.state.request_id))
     return result

@@ -12,6 +12,16 @@ from apps.api.src.auth import require_service_token, signed_context_user_id
 from apps.api.src.config import Settings
 
 
+def test_production_rejects_unsigned_context_configuration() -> None:
+    with pytest.raises(ValueError, match="REQUIRE_SIGNED_CONTEXT"):
+        Settings(app_env="production", require_signed_context=False)
+
+
+def test_development_allows_legacy_unsigned_context_configuration() -> None:
+    settings = Settings(app_env="development", require_signed_context=False)
+    assert settings.require_signed_context is False
+
+
 def settings_with_token(path: Path) -> Settings:
     return Settings(service_token_file=path)
 

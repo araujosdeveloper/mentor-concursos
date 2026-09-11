@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-docker exec mentor-concursos-postgres sh -ceu 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+docker exec -i mentor-concursos-postgres sh -ceu 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
 BEGIN;
 SET LOCAL search_path TO mentor_concursos, public;
 CREATE TEMP TABLE fixture_ids (user_id uuid, source_id uuid, version_id uuid);

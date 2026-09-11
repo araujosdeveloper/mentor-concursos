@@ -32,15 +32,24 @@ def connect() -> psycopg.Connection:
     )
 
 
-def claim_job(worker_id: str, lease_seconds: int = 300) -> dict[str, object] | None:
-    """Adquire uma fila com lease; jobs expirados podem ser retomados."""
+def claim_job(
+    worker_id: str, supported_source_types: tuple[str, ...], lease_seconds: int = 300
+) -> dict[str, object] | None:
+    """Adquire apenas jobs suportados; leases expirados podem ser retomados."""
+    if not supported_source_types:
+        return None
     with connect() as connection, connection.transaction():
         row = connection.execute(
-            """SELECT * FROM mentor_concursos.ingestion_jobs
-               WHERE (status='queued' OR (status NOT IN ('completed','failed','cancelled')
-               AND lease_expires_at < CURRENT_TIMESTAMP))
-               AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP)
-               ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1"""
+            """SELECT j.*,s.source_type FROM mentor_concursos.ingestion_jobs j
+               JOIN mentor_concursos.knowledge_source_versions v ON v.id=j.source_version_id
+               JOIN mentor_concursos.knowledge_sources s ON s.id=v.source_id
+               WHERE s.source_type = ANY(%s)
+               AND (j.status='queued' OR (j.status NOT IN ('completed','failed','cancelled')
+               AND j.lease_expires_at < CURRENT_TIMESTAMP))
+               AND j.attempts < 5
+               AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= CURRENT_TIMESTAMP)
+               ORDER BY j.created_at,j.id FOR UPDATE OF j SKIP LOCKED LIMIT 1""",
+            (list(supported_source_types),),
         ).fetchone()
         if not row:
             return None

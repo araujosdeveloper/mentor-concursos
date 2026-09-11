@@ -26,8 +26,10 @@ required=(
   database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
   database/migrations/006_official_source_refresh.sql apps/worker/src/source_refresh.py
-  database/migrations/007_source_review_rbac.sql
-  docs/adr/ADR-017-consolidacao-refresh-seguro.md
+  database/migrations/007_source_review_rbac.sql apps/api/src/knowledge_review.py
+  docs/adr/ADR-019-consolidacao-refresh-seguro.md scripts/set-user-role.py
+  tests/unit/test_source_review.py tests/unit/test_worker_consumer.py
+  tests/unit/test_set_user_role.py tests/integration/verify-migration-007.sh
   database/migrations/005_practice_review.sql apps/api/src/practice.py
   apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
   docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
