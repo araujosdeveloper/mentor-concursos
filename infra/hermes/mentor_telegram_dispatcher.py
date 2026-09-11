@@ -146,6 +146,25 @@ def _format(cmd, result, key):
         return "\n".join(lines + ["", "Responda com /responder <letra>."])
     if cmd == "ajuda":
         return "Comandos: /questao, /responder, /simulado, /revisar, /erros e /desempenho."
+    if cmd == "responder":
+        correct = bool(result.get("correct"))
+        selected = str(result.get("selected_option") or "?").upper()
+        expected = str(result.get("correct_option") or "?").upper()
+        citation = result.get("citation") or {}
+        source = citation.get("source_name") or "fonte indexada"
+        locator = citation.get("locator") or "localização não informada"
+        next_review = result.get("next_review_at") or "não agendada"
+        status = "Acerto" if correct else "Erro"
+        lines = [
+            f"{status}.",
+            f"Alternativa escolhida: {selected}",
+            f"Alternativa correta: {expected}",
+            f"Explicação: {result.get('explanation') or 'não disponível'}",
+            f"Fonte: {source}",
+            f"Localizador: {locator}",
+            f"Próxima revisão: {next_review}",
+        ]
+        return "\n".join(lines)
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -215,7 +234,12 @@ async def dispatch(event, command):
                     ctx,
                     {"version": current["version"]},
                 )
-        return _format(command, result, key)
+        try:
+            return _format(command, result, key)
+        except (TypeError, ValueError, AttributeError):
+            if command == "responder":
+                return "Resposta registrada, mas a apresentação falhou. Consulte /desempenho."
+            raise
     except (OSError, RuntimeError, ValueError) as error:
         LOGGER.warning("academic_command_failed class=%s", type(error).__name__)
         return "Erro técnico temporário. Nenhuma operação acadêmica foi realizada."

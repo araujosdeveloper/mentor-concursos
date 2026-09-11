@@ -85,3 +85,75 @@ def test_question_idempotency_key_changes_per_telegram_update() -> None:
     dispatcher._call("POST", "/api/v1/practice/question", base, {})
     dispatcher._call("POST", "/api/v1/practice/question", {**base, "request_id": "m2"}, {})
     assert captured[0] != captured[1]
+
+
+def test_answer_formats_real_api_contract_without_internal_identifiers() -> None:
+    dispatcher = _module()
+    rendered = dispatcher._format(
+        "responder",
+        {
+            "question_id": "12454f2c-c75c-42aa-9bac-c391a0bdce29",
+            "correct": True,
+            "selected_option": "A",
+            "correct_option": "A",
+            "explanation": "A alternativa correta reproduz o trecho indexado indicado na citação.",
+            "citation": {
+                "hash": "3224ae7883b57ad829eff2107f8df32852d486734c9999683d88a9afb49e2ed4",
+                "locator": "Art. 68.",
+                "chunk_id": "41c42172-bcde-4989-9766-fa0a9adb16a6",
+                "source_name": "Lei nº 9.784/1999 — Processo Administrativo Federal",
+                "official_url": "https://www2.camara.leg.br/legin/fed/lei/1999/lei-9784-29-janeiro-1999-322239-norma-pl.html",
+                "source_version_id": "1eccd249-b219-4d96-8e36-5dba1535159e",
+            },
+            "next_review_at": "2026-09-14T15:27:22.943733+00:00",
+        },
+        ("user", "chat"),
+    )
+    assert "Acerto." in rendered
+    assert "Alternativa escolhida: A" in rendered
+    assert "Alternativa correta: A" in rendered
+    assert "Art. 68." in rendered
+    assert "12454f2c" not in rendered
+    assert "3224ae78" not in rendered
+
+
+def test_answer_retry_uses_same_idempotent_request_and_formats_again() -> None:
+    dispatcher = _module()
+    dispatcher.CURRENT[("1", "1")] = "question-id"
+    calls = []
+
+    def fake_call(method, path, ctx, payload=None):
+        calls.append((method, path, payload))
+        return {
+            "correct": True,
+            "selected_option": "A",
+            "correct_option": "A",
+            "explanation": "ok",
+            "citation": {"source_name": "Fonte", "locator": "Art. 1."},
+            "next_review_at": "amanhã",
+        }
+
+    dispatcher._call = fake_call
+
+    class Event:
+        source = type(
+            "Source",
+            (),
+            {
+                "platform": type("Platform", (), {"value": "telegram"}),
+                "user_id": "1",
+                "chat_id": "1",
+                "message_id": "answer-retry",
+            },
+        )()
+
+        def get_command_args(self):
+            return "A"
+
+    import asyncio
+
+    first = asyncio.run(dispatcher.dispatch(Event(), "responder"))
+    dispatcher.CURRENT[("1", "1")] = "question-id"
+    second = asyncio.run(dispatcher.dispatch(Event(), "responder"))
+    assert first == second
+    assert len(calls) == 2
