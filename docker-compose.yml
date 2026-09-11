@@ -216,6 +216,7 @@ services:
       - ./infra/hermes/skills:/opt/mentor-hermes/skills:ro
       - ./infra/hermes/sitecustomize.py:/opt/mentor-hermes/sitecustomize.py:ro
       - ./infra/hermes/mentor_telegram_dispatcher.py:/opt/mentor-hermes/mentor_telegram_dispatcher.py:ro
+      - ./infra/hermes/mentor_consultation_memory.py:/opt/mentor-hermes/mentor_consultation_memory.py:ro
     tmpfs:
       - /run:size=16m,mode=0755,exec
       - /tmp:size=32m,mode=1777
