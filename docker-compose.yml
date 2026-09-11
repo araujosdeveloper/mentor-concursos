@@ -31,12 +31,16 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      CONTEXT_HMAC_KEY_FILE: /run/secrets/hermes_context_hmac_key
+      REQUIRE_SIGNED_CONTEXT: ${REQUIRE_SIGNED_CONTEXT:-false}
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       EMBEDDINGS_URL: http://mentor-concursos-embeddings:8090
     secrets:
       - source: mentor_api_service_token
         target: mentor_api_service_token_source
+      - source: HERMES_CONTEXT_HMAC_KEY
+        target: hermes_context_hmac_key
     expose: ["8080"]
     networks: [mentor-concursos-core, mentor-concursos-agent]
     depends_on:
@@ -182,6 +186,7 @@ services:
       MENTOR_API_BASE_URL: http://mentor-concursos-api:8080
       TZ: ${TZ:-America/Sao_Paulo}
       MENTOR_API_SERVICE_TOKEN_FILE: /run/secrets/mentor_api_service_token
+      MENTOR_CONTEXT_HMAC_KEY_FILE: /run/secrets/hermes_context_hmac_key
       HERMES_HOME: /opt/data
       HOME: /opt/data/home
       HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
@@ -193,6 +198,8 @@ services:
       TELEGRAM_OBSERVE_UNMENTIONED_GROUP_MESSAGES: "false"
     secrets:
       - mentor_api_service_token
+      - source: HERMES_CONTEXT_HMAC_KEY
+        target: hermes_context_hmac_key
       - telegram_bot_token
     read_only: true
     cap_drop: [ALL]
@@ -301,3 +308,5 @@ secrets:
     file: ./secrets/mentor_api_service_token
   telegram_bot_token:
     file: ./secrets/telegram_bot_token
+  HERMES_CONTEXT_HMAC_KEY:
+    file: ./secrets/hermes_context_hmac_key

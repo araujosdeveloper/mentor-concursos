@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     embeddings_url: str = "http://mentor-concursos-embeddings:8090"
     service_token_file: Path = Path("/run/secrets/mentor_api_service_token")
+    context_hmac_key_file: Path = Path("/run/secrets/hermes_context_hmac_key")
+    require_signed_context: bool = False
+    signed_context_max_age_seconds: int = Field(default=60, ge=1, le=300)
+    signed_context_replay_ttl_seconds: int = Field(default=120, ge=60, le=600)
 
 
 @lru_cache
