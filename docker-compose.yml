@@ -40,7 +40,7 @@ services:
       - source: mentor_api_service_token
         target: mentor_api_service_token_source
       - source: HERMES_CONTEXT_HMAC_KEY
-        target: hermes_context_hmac_key
+        target: hermes_context_hmac_key_source
     expose: ["8080"]
     networks: [mentor-concursos-core, mentor-concursos-agent]
     depends_on:
