@@ -19,6 +19,7 @@ RUN python -m pip install --require-hashes --no-deps -r requirements-dev.lock
 
 COPY pyproject.toml requirements.lock ./
 COPY apps ./apps
+COPY config ./config
 COPY database ./database
 COPY scripts ./scripts
 COPY tests ./tests
