@@ -113,3 +113,17 @@ def test_signed_context_expired_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(HTTPException) as error:
         signed_context_user_id(_request(_signed_headers(key, int(time.time()) - 61)), settings)
     assert error.value.status_code == 401
+
+
+def test_payload_tampered_after_signing_is_rejected(tmp_path: Path) -> None:
+    key = b"k" * 32
+    key_file = tmp_path / "hmac"
+    key_file.write_bytes(key)
+    settings = Settings(context_hmac_key_file=key_file, require_signed_context=True)
+    headers = _signed_headers(key)
+    tampered = json.loads(headers["X-Hermes-Context"])
+    tampered["telegram_user_id"] = 999999999
+    headers["X-Hermes-Context"] = json.dumps(tampered, separators=(",", ":"))
+    with pytest.raises(HTTPException) as error:
+        signed_context_user_id(_request(headers), settings)
+    assert error.value.status_code == 401
