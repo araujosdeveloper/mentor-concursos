@@ -6,22 +6,22 @@ model:
 # Telegram aliases are expanded to the project-owned mentor-study skill. This
 # keeps academic commands out of the general Hermes conversation loop.
 quick_commands:
-  inicio: {type: alias, target: mentor-study}
-  ajuda: {type: alias, target: mentor-study}
-  perguntar: {type: alias, target: mentor-study}
-  perfil: {type: alias, target: mentor-study}
-  progresso: {type: alias, target: mentor-study}
-  estudar: {type: alias, target: mentor-study}
-  pausar: {type: alias, target: mentor-study}
-  retomar: {type: alias, target: mentor-study}
-  finalizar: {type: alias, target: mentor-study}
-  cancelar: {type: alias, target: mentor-study}
-  questao: {type: alias, target: mentor-study}
-  responder: {type: alias, target: mentor-study}
-  simulado: {type: alias, target: mentor-study}
-  revisar: {type: alias, target: mentor-study}
-  erros: {type: alias, target: mentor-study}
-  desempenho: {type: alias, target: mentor-study}
+  inicio: {type: alias, target: "mentor-study /inicio"}
+  ajuda: {type: alias, target: "mentor-study /ajuda"}
+  perguntar: {type: alias, target: "mentor-study /perguntar"}
+  perfil: {type: alias, target: "mentor-study /perfil"}
+  progresso: {type: alias, target: "mentor-study /progresso"}
+  estudar: {type: alias, target: "mentor-study /estudar"}
+  pausar: {type: alias, target: "mentor-study /pausar"}
+  retomar: {type: alias, target: "mentor-study /retomar"}
+  finalizar: {type: alias, target: "mentor-study /finalizar"}
+  cancelar: {type: alias, target: "mentor-study /cancelar"}
+  questao: {type: alias, target: "mentor-study /questao"}
+  responder: {type: alias, target: "mentor-study /responder"}
+  simulado: {type: alias, target: "mentor-study /simulado"}
+  revisar: {type: alias, target: "mentor-study /revisar"}
+  erros: {type: alias, target: "mentor-study /erros"}
+  desempenho: {type: alias, target: "mentor-study /desempenho"}
 
 unauthorized_dm_behavior: pair
 

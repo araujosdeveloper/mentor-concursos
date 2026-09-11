@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .auth import require_service_token
+from .auth import require_service_token, signed_context_user_id
 from .config import Settings, get_settings
 
 router = APIRouter(prefix="/api/v1", tags=["academic"])
@@ -171,10 +171,14 @@ def _db_error(error: psycopg.Error) -> HTTPException:
 
 
 def _user_dependency(
+    request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     _: Annotated[None, Depends(require_service_token)],
     telegram_user_id: Annotated[int | None, Header(alias="X-Telegram-User-ID")] = None,
 ) -> AcademicUser:
+    signed_id = signed_context_user_id(request, settings)
+    if signed_id is not None:
+        telegram_user_id = signed_id
     if telegram_user_id is None:
         raise HTTPException(status_code=401, detail="Usuário não identificado")
     with _connect(settings) as connection:

@@ -6,9 +6,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -43,21 +47,46 @@ def _trusted_context() -> dict[str, str]:
 def _request(method: str, path: str, context: dict[str, str], payload: dict | None = None) -> dict:
     base = os.environ.get("MENTOR_API_BASE_URL", "http://mentor-concursos-api:8080").rstrip("/")
     body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode()
-    headers = {
-        "Authorization": f"Bearer {_token()}",
-        "X-Telegram-User-ID": context["user_id"],
-        "X-Telegram-Chat-ID": context["chat_id"],
-        "X-Mentor-Channel": context["platform"],
-        "X-Request-ID": context["request_id"],
-        "Accept": "application/json",
-    }
+    service_token = _token()
     if body is not None:
-        headers["Content-Type"] = "application/json"
         fingerprint = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         key_material = f"mentor:{context['user_id']}:{method}:{path}:{fingerprint}"
-        headers["Idempotency-Key"] = str(uuid.uuid5(uuid.NAMESPACE_URL, key_material))
-    request = urllib.request.Request(f"{base}{path}", data=body, headers=headers, method=method)
+        idempotency_key = str(uuid.uuid5(uuid.NAMESPACE_URL, key_material))
     for attempt in range(2):
+        key_path = os.environ.get("MENTOR_CONTEXT_HMAC_KEY_FILE", "/run/secrets/hermes_context_hmac_key")
+        try:
+            with open(key_path, "rb") as key_file:
+                hmac_key = key_file.read().strip()
+        except OSError:
+            raise RuntimeError("contexto assinado indisponível") from None
+        if not hmac_key:
+            raise RuntimeError("contexto assinado indisponível")
+        timestamp = int(time.time())
+        nonce = secrets.token_hex(16)
+        canonical = f"{context['user_id']}.{context['chat_id']}.{timestamp}.{nonce}"
+        signed_context = json.dumps(
+            {
+                "telegram_user_id": int(context["user_id"]),
+                "chat_id": int(context["chat_id"]),
+                "ts": timestamp,
+                "nonce": nonce,
+            },
+            separators=(",", ":"),
+        )
+        headers = {
+            "Authorization": f"Bearer {service_token}",
+            "X-Telegram-User-ID": context["user_id"],
+            "X-Telegram-Chat-ID": context["chat_id"],
+            "X-Mentor-Channel": context["platform"],
+            "X-Request-ID": context["request_id"],
+            "X-Hermes-Context": signed_context,
+            "X-Hermes-Signature": hmac.new(hmac_key, canonical.encode(), hashlib.sha256).hexdigest(),
+            "Accept": "application/json",
+        }
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+            headers["Idempotency-Key"] = idempotency_key
+        request = urllib.request.Request(f"{base}{path}", data=body, headers=headers, method=method)
         try:
             with urllib.request.urlopen(request, timeout=12) as response:
                 return json.loads(response.read())

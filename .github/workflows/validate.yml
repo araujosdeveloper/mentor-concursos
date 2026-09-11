@@ -2,7 +2,7 @@ name: Validate foundation
 
 on:
   push:
-    branches: [feat/foundation]
+    branches: [main, feat/foundation]
   pull_request:
 
 permissions:
@@ -14,6 +14,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
       - name: Build isolated validation image
         run: docker build --pull=false --file Dockerfile.validation --tag mentor-concursos-validation:0.1.0 .
       - name: Run tests, lint and compile without network

@@ -2,8 +2,10 @@
 
 ## Ativação controlada
 
-1. Confira que `secrets/telegram_bot_token` e `secrets/mentor_api_service_token`
-   existem, têm modo 600 e não serão exibidos.
+1. Confira que `secrets/telegram_bot_token`, `secrets/mentor_api_service_token`
+   e `secrets/hermes_context_hmac_key` existem, têm modo 600 e não serão
+   exibidos. O token Telegram é obtido manualmente no BotFather; os demais são
+   gerados idempotentemente por `scripts/prepare-production-env.sh`.
 2. Valide `docker compose --profile mentor-concursos-hermes config --quiet`.
 3. Inicie apenas `docker compose --profile mentor-concursos-hermes up -d --no-deps mentor-concursos-hermes`.
 4. Aguarde o healthcheck do PID/state do gateway.

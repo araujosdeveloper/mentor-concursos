@@ -29,3 +29,19 @@ Endpoints acadêmicos futuros devem depender do mesmo controle de autenticação
 3. Reinicie somente API e, futuramente, o Hermes dedicado.
 4. Valide 401 para o token anterior e 200 para o novo.
 5. Remova de forma segura qualquer cópia temporária. Nunca registre o token em ticket ou log.
+
+## Contexto Telegram assinado
+
+O Hermes envia, além do header legado, um envelope `X-Hermes-Context` com
+`telegram_user_id`, `chat_id`, timestamp e nonce, acompanhado de assinatura
+HMAC-SHA256 em `X-Hermes-Signature`. A chave dedicada
+`hermes_context_hmac_key` é montada somente na API e no Hermes. A API valida a
+assinatura com comparação em tempo constante, exige frescor de 60 segundos e
+consome o nonce em Redis com `NX/EX` por 120 segundos para impedir replay.
+
+Durante a migração, `REQUIRE_SIGNED_CONTEXT=false` aceita o header legado apenas
+quando não há envelope; um envelope presente e inválido nunca sofre downgrade.
+Após observar consistência operacional, ativar `REQUIRE_SIGNED_CONTEXT=true` e
+remover o caminho legado em alteração posterior. A chave HMAC deve ser rotada
+independentemente do Bearer de serviço, recriando apenas API e Hermes e
+validando replay, expiração e discrepâncias sem registrar IDs ou segredos.

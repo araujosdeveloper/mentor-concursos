@@ -20,7 +20,7 @@ if [[ ! -e .env ]]; then
     printf '%s\n' 'POSTGRES_USER=mentor_app'
     printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
     printf 'REDIS_PASSWORD=%s\n' "$redis_password"
-    printf '%s\n' 'APP_ENV=production' 'LOG_LEVEL=INFO' 'TZ=America/Sao_Paulo'
+    printf '%s\n' 'APP_ENV=production' 'LOG_LEVEL=INFO' 'TZ=America/Sao_Paulo' 'REQUIRE_SIGNED_CONTEXT=false'
   } >.env
 fi
 chmod 600 .env
@@ -31,11 +31,17 @@ if [[ ! -e "$token_file" ]]; then
 fi
 chmod 600 "$token_file"
 
-git check-ignore -q .env && git check-ignore -q secrets/mentor_api_service_token || {
+hmac_file="secrets/hermes_context_hmac_key"
+if [[ ! -e "$hmac_file" ]]; then
+  openssl rand -hex 32 >"$hmac_file"
+fi
+chmod 600 "$hmac_file"
+
+git check-ignore -q .env && git check-ignore -q "$token_file" && git check-ignore -q "$hmac_file" || {
   echo "ERRO: segredo local não está protegido pelo .gitignore" >&2
   exit 1
 }
-if git ls-files --error-unmatch .env "$token_file" >/dev/null 2>&1; then
+if git ls-files --error-unmatch .env "$token_file" "$hmac_file" >/dev/null 2>&1; then
   echo "ERRO: segredo local rastreado pelo Git" >&2
   exit 1
 fi
