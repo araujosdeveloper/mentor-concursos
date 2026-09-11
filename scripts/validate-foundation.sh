@@ -37,6 +37,8 @@ required=(
   docs/06-MODELO-ACADEMICO.md docs/07-API-ACADEMICA.md
   docs/adr/ADR-010-nucleo-academico.md docs/adr/ADR-011-calculo-tempo-liquido.md
   docs/adr/ADR-012-idempotencia-academica.md docs/runbooks/MIGRATIONS-ACADEMIC.md
+  docs/11-FONTES-OFICIAIS-E-ATUALIZACAO.md scripts/refresh-official-source.py
+  tests/unit/test_source_refresh.py config/official-sources.yaml
 )
 
 for path in "${required[@]}"; do
