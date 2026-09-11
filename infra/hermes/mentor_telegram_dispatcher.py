@@ -14,6 +14,8 @@ import urllib.error
 import urllib.request
 import uuid
 
+from mentor_consultation_memory import context_for, record
+
 COMMANDS = {
     "inicio",
     "ajuda",
@@ -261,6 +263,22 @@ def install(module):
             and getattr(getattr(event.source, "platform", None), "value", "") == "telegram"
         ):
             return await dispatch(event, command)
+        source = getattr(event, "source", None)
+        is_telegram = getattr(getattr(source, "platform", None), "value", "") == "telegram"
+        if is_telegram and not command:
+            previous_context = context_for(source)
+            if previous_context:
+                event.channel_context = previous_context
+            try:
+                response = await original(self, event)
+            except Exception:
+                raise
+            record(
+                source,
+                getattr(event, "text", ""),
+                response if isinstance(response, str) else None,
+            )
+            return response
         return await original(self, event)
 
     runner._handle_message = guarded
