@@ -81,3 +81,34 @@ def test_size_limit_and_magic_are_enforced(monkeypatch):
             SourcePolicy("example.com", "https://example.com/a.pdf", max_bytes=4),
             opener=FakeOpener(FakeResponse(b"%PDF-123", "https://example.com/a.pdf")),
         )
+
+
+def test_redirect_is_validated_before_next_connection(monkeypatch):
+    import urllib.error
+
+    calls = 0
+
+    def validate(url, _policy):
+        if "internal" in url:
+            raise ValueError("private_address_forbidden")
+
+    monkeypatch.setattr(_module, "_validate_url", validate)
+
+    class Opener:
+        def open(self, request, timeout):
+            nonlocal calls
+            calls += 1
+            assert timeout <= 30
+            if calls == 1:
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    302,
+                    "redirect",
+                    {"Location": "https://internal.example/x"},
+                    None,
+                )
+            raise AssertionError("redirect target must not be connected")
+
+    with pytest.raises(ValueError, match="private_address_forbidden"):
+        acquire(policy(), opener=Opener())
+    assert calls == 1
