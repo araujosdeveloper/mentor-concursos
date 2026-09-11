@@ -1,39 +1,41 @@
-"""Project-local bridge for Hermes session context in skill subprocesses.
-
-Hermes v0.20.4 stores Telegram metadata in task-local ContextVars.  Its
-``hermes_subprocess_env`` helper historically copied only ``os.environ`` on
-one non-terminal spawn path, so the mentor-study process lost the trusted
-identity.  Patch that single factory at interpreter startup; the canonical
-ContextVar values remain the only source of identity.
-"""
+"""Install Mentor dispatcher at the Hermes gateway import boundary."""
 
 from __future__ import annotations
 
-from functools import wraps
+import importlib.abc
+import sys
 
 
-def _install_context_bridge() -> None:
-    try:
-        from tools.environments import local
-    except Exception:
-        return
-    if getattr(local, "_mentor_context_bridge_installed", False):
-        return
-    original = local.hermes_subprocess_env
-    inject = getattr(local, "_inject_session_context_env", None)
-    if not callable(inject):
-        return
+class _Finder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname != "gateway.run":
+            return None
+        for finder in tuple(sys.meta_path):
+            if finder is self or not hasattr(finder, "find_spec"):
+                continue
+            spec = finder.find_spec(fullname, path, target)
+            if spec is None or spec.loader is None:
+                continue
+            loader = spec.loader
 
-    @wraps(original)
-    def bridged_hermes_subprocess_env(*, inherit_credentials: bool = False):
-        env = original(inherit_credentials=inherit_credentials)
-        # Values come exclusively from the current gateway task's ContextVars;
-        # the helper strips unset values when the session machinery is engaged.
-        inject(env)
-        return env
+            class _Loader(importlib.abc.Loader):
+                def __init__(self, wrapped):
+                    self._wrapped = wrapped
 
-    local.hermes_subprocess_env = bridged_hermes_subprocess_env
-    local._mentor_context_bridge_installed = True
+                def create_module(self, spec):
+                    create = getattr(self._wrapped, "create_module", None)
+                    return create(spec) if create else None
+
+                def exec_module(self, module):
+                    self._wrapped.exec_module(module)
+                    from mentor_telegram_dispatcher import install
+
+                    install(module)
+
+            spec.loader = _Loader(loader)
+            return spec
+        return None
 
 
-_install_context_bridge()
+if not any(isinstance(f, _Finder) for f in sys.meta_path):
+    sys.meta_path.insert(0, _Finder())

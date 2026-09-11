@@ -3,6 +3,7 @@ set -eu
 
 readonly TELEGRAM_SECRET=/run/secrets/telegram_bot_token
 readonly API_SECRET=/run/secrets/mentor_api_service_token
+readonly HMAC_SECRET=/run/secrets/hermes_context_hmac_key
 readonly DATA_DIR=/opt/data
 
 fail() {
@@ -12,6 +13,7 @@ fail() {
 
 [ -s "$TELEGRAM_SECRET" ] || fail
 [ -s "$API_SECRET" ] || fail
+[ -s "$HMAC_SECRET" ] || fail
 
 # The token is read only into the process environment required by Hermes. It is
 # never echoed, persisted, passed as a Compose value, or included in inspect
@@ -24,6 +26,13 @@ export TELEGRAM_BOT_TOKEN
 API_RUNTIME_SECRET=/run/mentor_api_service_token
 install -m 0400 -o hermes -g hermes "$API_SECRET" "$API_RUNTIME_SECRET"
 export MENTOR_API_SERVICE_TOKEN_FILE="$API_RUNTIME_SECRET"
+# Docker's source secret remains root-only.  Materialize a short-lived copy in
+# the container's /run tmpfs for the non-root Hermes process only.
+HMAC_RUNTIME_DIR=/run/mentor-secrets
+install -d -m 0700 -o hermes -g hermes "$HMAC_RUNTIME_DIR"
+HMAC_RUNTIME_SECRET="$HMAC_RUNTIME_DIR/hermes_context_hmac_key"
+install -m 0400 -o hermes -g hermes "$HMAC_SECRET" "$HMAC_RUNTIME_SECRET"
+export MENTOR_CONTEXT_HMAC_KEY_FILE="$HMAC_RUNTIME_SECRET"
 export HERMES_HOME="$DATA_DIR"
 export HOME="$DATA_DIR/home"
 
