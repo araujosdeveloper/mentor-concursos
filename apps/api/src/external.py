@@ -93,7 +93,7 @@ def answer(
     snippets = [item.get("snippet", "")[:700] for item in evidence[:3]]
     return {
         "state": "answered",
-        "answer": "Resposta fundamentada exclusivamente nas fontes oficiais consultadas:\n\n" + "\n\n".join(snippets),
+        "answer": "\n\n".join(snippets),
         "citations": citations,
         "request_id": request.state.request_id,
     }
