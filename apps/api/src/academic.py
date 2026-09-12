@@ -507,6 +507,28 @@ def _session_update(connection: psycopg.Connection, session: dict[str, Any], sta
     return row
 
 
+def _record_mastery(connection: psycopg.Connection, user_id: uuid.UUID, goal_id: uuid.UUID, subject_id: uuid.UUID, seconds: int) -> None:
+    """Registra evidência determinística de estudo nos tópicos da disciplina."""
+    topics = connection.execute("SELECT id FROM mentor_concursos.topics WHERE subject_id=%s AND active", (subject_id,)).fetchall()
+    for topic in topics:
+        existing = connection.execute(
+            "SELECT evidence_count FROM mentor_concursos.topic_mastery WHERE user_id=%s AND goal_id=%s AND topic_id=%s FOR UPDATE",
+            (user_id, goal_id, topic["id"]),
+        ).fetchone()
+        if existing:
+            count = existing["evidence_count"] + 1
+            state = "review" if count >= 2 else "in_progress"
+            connection.execute(
+                "UPDATE mentor_concursos.topic_mastery SET evidence_count=%s, evidence_seconds=evidence_seconds+%s, state=%s, version=version+1, updated_at=CURRENT_TIMESTAMP WHERE user_id=%s AND goal_id=%s AND topic_id=%s",
+                (count, seconds, state, user_id, goal_id, topic["id"]),
+            )
+        else:
+            connection.execute(
+                "INSERT INTO mentor_concursos.topic_mastery(user_id,goal_id,topic_id,state,evidence_count,evidence_seconds) VALUES (%s,%s,%s,'in_progress',1,%s)",
+                (user_id, goal_id, topic["id"], seconds),
+            )
+
+
 @router.post("/sessions/start", status_code=201)
 def start_session(request: Request, body: SessionStart, user: UserDep, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
     def operation(connection: psycopg.Connection) -> tuple[int, dict[str, Any]]:
@@ -556,6 +578,8 @@ def _transition(session_id: uuid.UUID, request: Request, body: SessionObservatio
             if row["plan_item_id"] is not None:
                 item_status = "completed" if target == "complete" else "planned"
                 connection.execute("UPDATE mentor_concursos.study_plan_items SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s", (item_status, row["plan_item_id"]))
+            if target == "complete":
+                _record_mastery(connection, user.id, row["goal_id"], row["subject_id"], int(updated["net_duration_seconds"]))
         _audit(connection, "user", f"session_{target}d", "study_sessions", session_id, request.state.request_id)
         return 200, _row_response(updated)
     return _mutate(request, user, settings, body.model_dump(mode="json") | {"session_id": str(session_id), "target": target}, operation)

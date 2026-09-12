@@ -125,6 +125,14 @@ def create_study_plan(
                 (syllabus["id"], subject["id"], discipline.get("weight"), index),
             )
 
+        for subject_id in subject_ids.values():
+            connection.execute(
+                "INSERT INTO mentor_concursos.syllabus_topics(syllabus_id, topic_id, status) "
+                "SELECT %s, id, 'included' FROM mentor_concursos.topics WHERE subject_id=%s AND active "
+                "ON CONFLICT (syllabus_id, topic_id) DO NOTHING",
+                (syllabus["id"], subject_id),
+            )
+
         items_count = 0
         cycles_by_week: dict[int, Any] = {}
         ordinals: dict[uuid.UUID, int] = {}
