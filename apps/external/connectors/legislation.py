@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import re
 from collections.abc import Callable
 
@@ -48,8 +49,8 @@ _CODE_ALIASES = {
 }
 
 
-def _strip_html(html: str) -> str:
-    return re.sub(r"<[^>]+>", " ", html)
+def _strip_html(html_str: str) -> str:
+    return html.unescape(re.sub(r"<[^>]+>", " ", html_str))
 
 
 def _decode(raw: bytes) -> str:
