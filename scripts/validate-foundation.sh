@@ -47,6 +47,7 @@ required=(
   docs/adr/ADR-020-consulta-externa-fontes-oficiais.md
   apps/external/__init__.py apps/external/catalog.py
   apps/external/cache.py apps/external/service.py apps/external/Dockerfile
+  apps/external/entrypoint.sh
   apps/external/fetch.py
   apps/external/connectors/__init__.py apps/external/connectors/legislation.py
   apps/external/connectors/jurisprudence.py
