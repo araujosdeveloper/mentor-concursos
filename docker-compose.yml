@@ -140,10 +140,14 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       EXTERNAL_CACHE_TTL_SECONDS: ${EXTERNAL_CACHE_TTL_SECONDS:-300}
+      JURISPRUDENCIAS_BASE_URL: ${JURISPRUDENCIAS_BASE_URL:-https://jurisprudencias.ai/api/v1}
+      JURISPRUDENCIAS_API_TOKEN_FILE: /run/secrets/jurisprudencias_api_token
       HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
       HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
       NO_PROXY: mentor-concursos-redis,localhost,127.0.0.1
     expose: ["8091"]
+    secrets:
+      - jurisprudencias_api_token
     networks: [mentor-concursos-core, mentor-concursos-egress-internal]
     depends_on:
       mentor-concursos-redis: {condition: service_healthy}
@@ -353,3 +357,5 @@ secrets:
     file: ./secrets/telegram_bot_token
   HERMES_CONTEXT_HMAC_KEY:
     file: ./secrets/hermes_context_hmac_key
+  jurisprudencias_api_token:
+    file: ./secrets/jurisprudencias_api_token
