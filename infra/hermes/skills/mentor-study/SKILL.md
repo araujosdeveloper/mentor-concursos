@@ -88,7 +88,9 @@ Se houver `next.item`, ensine o assunto do `subject_name`, respeitando o
 - `review`: faça uma revisão rápida, pergunte o que ele lembra e reforce os
   pontos fracos.
 
-Ao final, sugira que ele marque a sessão como concluída (`/finalizar`).
+Antes de começar a aula, chame `mentor_api.py comecar` para abrir a sessão
+vinculada ao item. Ao final da aula, oriente Roberto a encerrar com `/finalizar`
+(o item é marcado como concluído e o plano avança para o próximo).
 
 ## Respostas acadêmicas
 

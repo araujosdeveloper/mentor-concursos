@@ -522,6 +522,8 @@ def start_session(request: Request, body: SessionStart, user: UserDep, settings:
         if body.plan_item_id is not None and not connection.execute("SELECT 1 FROM mentor_concursos.study_plan_items i JOIN mentor_concursos.study_cycles c ON c.id=i.cycle_id WHERE i.id=%s AND c.goal_id=%s AND i.subject_id=%s AND (i.topic_id IS NOT DISTINCT FROM %s)", (body.plan_item_id, body.goal_id, body.subject_id, body.topic_id)).fetchone():
             raise HTTPException(status_code=422, detail="Item de plano incompatível")
         row = connection.execute("INSERT INTO mentor_concursos.study_sessions(user_id,goal_id,plan_item_id,subject_id,topic_id,started_at,observation) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *", (user.id, body.goal_id, body.plan_item_id, body.subject_id, body.topic_id, now, body.observation)).fetchone()
+        if body.plan_item_id is not None:
+            connection.execute("UPDATE mentor_concursos.study_plan_items SET status='in_progress', updated_at=CURRENT_TIMESTAMP WHERE id=%s", (body.plan_item_id,))
         _audit(connection, "user", "session_started", "study_sessions", row["id"], request.state.request_id)
         return 201, _row_response(row)
     return _mutate(request, user, settings, body.model_dump(mode="json"), operation)
@@ -550,6 +552,9 @@ def _transition(session_id: uuid.UUID, request: Request, body: SessionObservatio
             updated = connection.execute("UPDATE mentor_concursos.study_sessions SET status='active',accumulated_pause_seconds=%s,version=version+1,observation=COALESCE(%s,observation) WHERE id=%s RETURNING *", (row["accumulated_pause_seconds"], body.observation, session_id)).fetchone()
         else:
             updated = _session_update(connection, row, "completed" if target == "complete" else "cancelled", at, body.observation)
+            if row["plan_item_id"] is not None:
+                item_status = "completed" if target == "complete" else "planned"
+                connection.execute("UPDATE mentor_concursos.study_plan_items SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s", (item_status, row["plan_item_id"]))
         _audit(connection, "user", f"session_{target}d", "study_sessions", session_id, request.state.request_id)
         return 200, _row_response(updated)
     return _mutate(request, user, settings, body.model_dump(mode="json") | {"session_id": str(session_id), "target": target}, operation)

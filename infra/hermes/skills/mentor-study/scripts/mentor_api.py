@@ -114,7 +114,7 @@ def main() -> int:
         "inicio", "perfil", "progresso", "perguntar", "estudar",
             "pausar", "retomar", "finalizar", "cancelar", "questao",
             "responder", "simulado", "revisar", "erros", "desempenho",
-            "concursos", "plano",
+            "concursos", "plano", "comecar",
         ],
     )
     parser.add_argument("--query", default="")
@@ -180,6 +180,19 @@ def main() -> int:
                               {"exam_id": args.exam_id, "deadline": args.deadline,
                                "days_per_week": int(args.days_per_week),
                                "hours_per_day": int(args.hours_per_day)})
+        elif args.action == "comecar":
+            goals = _request("GET", "/api/v1/goals", context).get("items", [])
+            active_goal = next((g for g in goals if g.get("active")), None)
+            if not active_goal:
+                raise RuntimeError("nenhum objetivo ativo; monte o plano primeiro")
+            next_item = _request("GET", "/api/v1/study/next-item", context)
+            item = next_item.get("item")
+            if not item:
+                raise RuntimeError("nenhum item pendente no plano")
+            result = _request("POST", "/api/v1/sessions/start", context,
+                              {"goal_id": active_goal["id"],
+                               "subject_id": item["subject_id"],
+                               "plan_item_id": item["id"]})
         elif args.action == "cancelar":
             result = _request("POST", "/api/v1/practice/cancel", context, {"cancel": True})
             if result.get("state") == "nothing_to_cancel":
