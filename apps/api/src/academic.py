@@ -37,6 +37,7 @@ class ProfilePatch(StrictModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     available_minutes_per_day: int | None = Field(default=None, ge=1, le=1440)
+    level: str | None = Field(default=None, pattern=r"^(beginner|intermediate|advanced)$")
 
 
 class GoalCreate(StrictModel):
@@ -610,7 +611,8 @@ def goal_progress(goal_id: uuid.UUID, user: UserDep, settings: Annotated[Setting
         if not valid:
             raise HTTPException(status_code=404, detail="Objetivo não encontrado")
         row = connection.execute("SELECT COUNT(*) FILTER (WHERE status='completed') AS completed, COUNT(*) AS total, COALESCE(SUM(net_duration_seconds),0) AS net_seconds FROM mentor_concursos.study_sessions WHERE goal_id=%s AND user_id=%s", (goal_id, user.id)).fetchone()
-    return {"goal_id": str(goal_id), "completed_sessions": row["completed"], "total_sessions": row["total"], "net_duration_seconds": row["net_seconds"]}
+        subjects = connection.execute("SELECT s.name, COALESCE(SUM(ss.net_duration_seconds),0) AS seconds FROM mentor_concursos.subjects s LEFT JOIN mentor_concursos.study_sessions ss ON ss.subject_id=s.id AND ss.goal_id=%s AND ss.user_id=%s AND ss.status='completed' GROUP BY s.name HAVING COALESCE(SUM(ss.net_duration_seconds),0) > 0 ORDER BY seconds DESC", (goal_id, user.id)).fetchall()
+    return {"goal_id": str(goal_id), "completed_sessions": row["completed"], "total_sessions": row["total"], "net_duration_seconds": row["net_seconds"], "subjects": [{"name": s["name"], "minutes": round(int(s["seconds"]) / 60)} for s in subjects]}
 
 
 @router.get("/goals/{goal_id}/topics/mastery")

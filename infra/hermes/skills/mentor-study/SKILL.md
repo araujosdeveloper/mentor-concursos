@@ -66,7 +66,8 @@ conversa curta, uma pergunta por vez, e só então crie o plano:
 3. **Disponibilidade**: pergunte quantos dias por semana e quantas horas por
    dia ele pode estudar.
 4. **Nível** (opcional): pergunte o ponto de partida (zero/intermediário/avançado)
-   para ajustar o tom das aulas.
+   para ajustar o tom das aulas. Registre com
+   `mentor_api.py perfil --level <beginner|intermediate|advanced>`.
 
 Com esses dados, chame:
 
