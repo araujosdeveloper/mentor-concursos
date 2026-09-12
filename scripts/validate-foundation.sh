@@ -45,11 +45,14 @@ required=(
   docs/11-FONTES-OFICIAIS-E-ATUALIZACAO.md scripts/refresh-official-source.py
   tests/unit/test_source_refresh.py config/official-sources.yaml
   docs/adr/ADR-020-consulta-externa-fontes-oficiais.md
-  apps/external/__init__.py apps/external/connectors.py apps/external/catalog.py
+  apps/external/__init__.py apps/external/catalog.py
   apps/external/cache.py apps/external/service.py apps/external/Dockerfile
+  apps/external/fetch.py
+  apps/external/connectors/__init__.py apps/external/connectors/legislation.py
   apps/api/src/external.py
   tests/unit/test_source_catalog.py tests/unit/test_external_cache.py
   tests/unit/test_external_service.py tests/unit/test_external_api.py
+  tests/unit/test_fetch.py tests/unit/test_legislation.py
 )
 
 for path in "${required[@]}"; do
