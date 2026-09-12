@@ -175,28 +175,15 @@ sources:
     max_redirects: 3
     enabled: true
 
-  stf-jurisprudencia:
-    organization: "Supremo Tribunal Federal"
+  jurisprudencias-ai:
+    organization: "Jurisprudencias.ai"
     segment: null
     category: jurisprudencia
     authority: primary_official
-    host: "portal.stf.jus.br"
+    host: "jurisprudencias.ai"
     canonical_url: null
     strategy: search_endpoint
-    note: "Busca de jurisprudência do STF. Endpoint a validar; paginação limitada, sem crawler."
+    note: "Agregador de jurisprudência (stf, stj, tst, trf, tj...). Cada resultado cita a URL do documento original no portal do tribunal."
     minimum_check_interval: "7d"
     max_redirects: 3
-    enabled: false
-
-  stj-jurisprudencia:
-    organization: "Superior Tribunal de Justiça"
-    segment: null
-    category: jurisprudencia
-    authority: primary_official
-    host: "scon.stj.jus.br"
-    canonical_url: null
-    strategy: search_endpoint
-    note: "Busca de jurisprudência do STJ. Endpoint a validar; paginação limitada, sem crawler."
-    minimum_check_interval: "7d"
-    max_redirects: 3
-    enabled: false
+    enabled: true

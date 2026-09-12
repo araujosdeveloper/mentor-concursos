@@ -44,6 +44,7 @@ def fetch(
     url: str,
     *,
     allowed_hosts: set[str],
+    headers: dict[str, str] | None = None,
     max_bytes: int = DEFAULT_MAX_BYTES,
     deadline_seconds: float = DEFAULT_DEADLINE_SECONDS,
     max_redirects: int = DEFAULT_MAX_REDIRECTS,
@@ -58,7 +59,8 @@ def fetch(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ValueError("fetch_timeout")
-        request = urllib.request.Request(current_url, headers={"User-Agent": USER_AGENT})
+        request_headers = {"User-Agent": USER_AGENT, **(headers or {})}
+        request = urllib.request.Request(current_url, headers=request_headers)
         try:
             response = opener.open(request, timeout=remaining)
         except urllib.error.HTTPError as error:

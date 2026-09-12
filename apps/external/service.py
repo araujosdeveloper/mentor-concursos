@@ -19,6 +19,7 @@ from pathlib import Path
 from apps.external.cache import TransientCache
 from apps.external.catalog import SourceCatalog, load_catalog
 from apps.external.connectors import Connector, ExternalQuery, SourceEvidence
+from apps.external.connectors.jurisprudence import JurisprudenceConnector
 from apps.external.connectors.legislation import LegislationConnector
 from apps.external.fetch import fetch
 
@@ -41,6 +42,20 @@ def populate_connectors() -> None:
     if catalog is None or cache is None:
         raise RuntimeError("catalog_not_loaded")
     register("legislacao_federal", LegislationConnector(catalog, cache, fetch))
+    token = _read_jurisprudencia_token()
+    if token:
+        base = os.getenv("JURISPRUDENCIAS_BASE_URL", "https://jurisprudencias.ai/api/v1")
+        register("jurisprudencia", JurisprudenceConnector(base, token, cache, fetch))
+    else:
+        logger.info("jurisprudence_token_missing")
+
+
+def _read_jurisprudencia_token() -> str:
+    path = os.getenv("JURISPRUDENCIAS_API_TOKEN_FILE", "/run/secrets/jurisprudencias_api_token")
+    try:
+        return Path(path).read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
 
 
 def _run_query(body: dict[str, object]) -> list[SourceEvidence]:

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta.
+Aceita.
 
 ## Contexto
 
@@ -26,8 +26,12 @@ oficiais.
 3. **Dois conectores de consulta.**
    - **Legislação/Constituição**: busca no portal oficial (Planalto/Câmara) pelo
      identificador normativo (lei, artigo) e leitura do texto vigente.
-   - **Jurisprudência**: busca controlada nos tribunais (STF/STJ), devolvendo
-     órgão, número do processo, data, ementa/trecho e link verificável.
+   - **Jurisprudência**: busca via agregador `jurisprudencias.ai` (stf, stj, tst,
+     trf, tj...), devolvendo órgão, número do processo, data, ementa/trecho e o
+     link do documento original no portal do tribunal. O agregador é usado apenas
+     para a busca, pois os portais oficiais de STF/STJ bloqueiam acesso
+     programático (proteção anti-bot); a citação continua apontando para a fonte
+     oficial.
 
 4. **Egress restrito.** Um serviço dedicado de consulta externa alcança a
    internet somente pela `egress-internal` + Squid, com allowlist limitada aos
