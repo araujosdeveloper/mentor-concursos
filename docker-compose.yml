@@ -36,6 +36,7 @@ services:
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       EMBEDDINGS_URL: http://mentor-concursos-embeddings:8090
+      EXTERNAL_URL: http://mentor-concursos-external:8091
     secrets:
       - source: mentor_api_service_token
         target: mentor_api_service_token_source
@@ -121,6 +122,43 @@ services:
       - /tmp:size=16m,mode=1777
     cpus: "0.40"
     mem_limit: 768m
+
+  mentor-concursos-external:
+    <<: *service-security
+    container_name: mentor-concursos-external
+    build:
+      context: .
+      dockerfile: apps/external/Dockerfile
+    image: mentor-concursos-external:0.1.0
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: ${TZ:-America/Sao_Paulo}
+      EXTERNAL_PORT: "8091"
+      CATALOG_PATH: /app/config/official-sources.yaml
+      REDIS_HOST: mentor-concursos-redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      EXTERNAL_CACHE_TTL_SECONDS: ${EXTERNAL_CACHE_TTL_SECONDS:-300}
+      HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
+      HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
+      NO_PROXY: mentor-concursos-redis,localhost,127.0.0.1
+    expose: ["8091"]
+    networks: [mentor-concursos-core, mentor-concursos-egress-internal]
+    depends_on:
+      mentor-concursos-redis: {condition: service_healthy}
+      mentor-concursos-egress-proxy: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cpus: "0.20"
+    mem_limit: 256m
 
   mentor-concursos-postgres:
     <<: *service-security

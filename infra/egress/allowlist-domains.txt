@@ -6,3 +6,11 @@ api.telegram.org
 auth.openai.com
 
 # Tavily permanece deliberadamente ausente até existir decisão de configuração.
+
+# Fontes oficiais para consulta externa ao vivo (ADR-020) — legislação e jurisprudência.
+# dstdomain: cada entrada casa o host e seus subdomínios. Subdomínios adicionais
+# de STF/STJ podem ser necessários ao validar os endpoints de jurisprudência.
+www.planalto.gov.br
+www2.camara.leg.br
+portal.stf.jus.br
+scon.stj.jus.br

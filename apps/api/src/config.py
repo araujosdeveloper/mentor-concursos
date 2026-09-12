@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     rate_limit_requests: int = Field(default=60, ge=1, le=10_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     embeddings_url: str = "http://mentor-concursos-embeddings:8090"
+    external_url: str = "http://mentor-concursos-external:8091"
     service_token_file: Path = Path("/run/secrets/mentor_api_service_token")
     context_hmac_key_file: Path = Path("/run/secrets/hermes_context_hmac_key")
     require_signed_context: bool = False

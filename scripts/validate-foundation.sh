@@ -44,6 +44,12 @@ required=(
   docs/adr/ADR-012-idempotencia-academica.md docs/runbooks/MIGRATIONS-ACADEMIC.md
   docs/11-FONTES-OFICIAIS-E-ATUALIZACAO.md scripts/refresh-official-source.py
   tests/unit/test_source_refresh.py config/official-sources.yaml
+  docs/adr/ADR-020-consulta-externa-fontes-oficiais.md
+  apps/external/__init__.py apps/external/connectors.py apps/external/catalog.py
+  apps/external/cache.py apps/external/service.py apps/external/Dockerfile
+  apps/api/src/external.py
+  tests/unit/test_source_catalog.py tests/unit/test_external_cache.py
+  tests/unit/test_external_service.py tests/unit/test_external_api.py
 )
 
 for path in "${required[@]}"; do
@@ -128,6 +134,9 @@ fi
 grep -Eq 'api\.telegram\.org' infra/egress/allowlist-domains.txt
 grep -Eq '^\.chatgpt\.com$' infra/egress/allowlist-domains.txt
 grep -Eq '^auth\.openai\.com$' infra/egress/allowlist-domains.txt
+grep -Eq '^www\.planalto\.gov\.br$' infra/egress/allowlist-domains.txt
+grep -Eq 'mentor-concursos-external:' docker-compose.yml
+grep -Eq 'mentor-concursos-egress-internal' docker-compose.yml
 if grep -Eq '^[[:space:]]*http_access[[:space:]]+allow[[:space:]]+all([[:space:]]|$)' infra/egress/squid.conf; then
   echo "FAIL proxy com liberação irrestrita" >&2
   exit 1
