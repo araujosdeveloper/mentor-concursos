@@ -27,5 +27,20 @@ ON CONFLICT DO NOTHING;
 INSERT INTO mentor_concursos.exams (id, organization, role, board, level, status, metadata)
 VALUES
   ('6f8b9c1e-4a2d-4b7a-9e3c-8d5f1a2b3c4d', 'Receita Federal do Brasil', 'Auditor-Fiscal da Receita Federal', 'FGV', 'higher', 'completed',
-   '{"year": 2023, "vagas": 699, "salario_inicial": 21029.09, "etapas": ["prova objetiva", "prova discursiva"]}')
-ON CONFLICT (id) DO NOTHING;
+   '{
+     "year": 2023,
+     "vagas": 699,
+     "salario_inicial": 21029.09,
+     "etapas": ["prova objetiva", "prova discursiva"],
+     "disciplines": [
+       {"subject": "lingua_portuguesa", "weight": 10},
+       {"subject": "raciocinio_logico_matematica", "weight": 8},
+       {"subject": "direito_constitucional", "weight": 12},
+       {"subject": "direito_administrativo", "weight": 12},
+       {"subject": "direito_tributario", "weight": 20},
+       {"subject": "auditoria", "weight": 13},
+       {"subject": "contabilidade_geral", "weight": 15},
+       {"subject": "comercio_internacional", "weight": 10}
+     ]
+   }')
+ON CONFLICT (id) DO UPDATE SET metadata=EXCLUDED.metadata;

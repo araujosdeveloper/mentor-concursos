@@ -19,6 +19,7 @@ from .knowledge import router as knowledge_router
 from .metrics import metrics
 from .metrics import router as metrics_router
 from .practice import router as practice_router
+from .study_plan import router as study_plan_router
 
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     application.include_router(knowledge_router)
     application.include_router(external_router)
     application.include_router(practice_router)
+    application.include_router(study_plan_router)
 
     @application.exception_handler(Exception)
     async def unhandled_error(request: Request, _: Exception) -> JSONResponse:
