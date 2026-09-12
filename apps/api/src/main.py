@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from .academic import router as academic_router
 from .config import get_settings
+from .external import router as external_router
 from .health import router as health_router
 from .internal import router as internal_router
 from .knowledge import router as knowledge_router
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     application.include_router(academic_router)
     application.include_router(knowledge_router)
     application.include_router(rag_router)
+    application.include_router(external_router)
     application.include_router(practice_router)
 
     @application.exception_handler(Exception)
