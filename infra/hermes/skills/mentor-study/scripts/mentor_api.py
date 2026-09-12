@@ -150,7 +150,8 @@ def main() -> int:
         elif args.action == "estudar":
             goals = _request("GET", "/api/v1/goals", context).get("items", [])
             current = _request("GET", "/api/v1/sessions/current", context)
-            result = {"goals": goals, "current": current, "needs_configuration": not goals}
+            next_item = _request("GET", "/api/v1/study/next-item", context)
+            result = {"goals": goals, "current": current, "next": next_item, "needs_configuration": not goals}
         elif args.action == "questao":
             result = _request("POST", "/api/v1/practice/question", context, {})
         elif args.action == "responder":

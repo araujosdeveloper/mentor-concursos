@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from apps.api.src.study_plan import distribute_minutes, plan_metrics
+from apps.api.src.study_plan import distribute_minutes, plan_metrics, review_schedule
 
 DISCIPLINES = [
     {"subject": "lingua_portuguesa", "weight": 10},
@@ -30,3 +30,12 @@ def test_distribute_minutes_proportional_to_weight() -> None:
 def test_distribute_minutes_has_floor() -> None:
     allocation = distribute_minutes(60, [{"subject": "x", "weight": 0}])
     assert allocation["x"] == 10
+
+
+def test_review_schedule_spaces_reviews() -> None:
+    assert review_schedule(12, [0]) == [1, 3, 8]
+
+
+def test_review_schedule_respects_bounds() -> None:
+    assert review_schedule(5, [0]) == [1, 3]
+    assert review_schedule(2, [0]) == [1]

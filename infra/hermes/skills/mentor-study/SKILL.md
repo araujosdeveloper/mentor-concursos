@@ -40,7 +40,8 @@ modo conversacional genérico ou use conhecimento externo.
 - `/perfil`: `mentor_api.py perfil`
 - `/progresso`: `mentor_api.py progresso`
 - `/estudar`: `mentor_api.py estudar`; se faltar objetivo, disciplina ou ciclo,
-  explique que Roberto precisa configurar isso pela API, sem criar dados.
+  explique que Roberto precisa configurar isso pela API, sem criar dados. Se
+  houver `next.item`, inicie a aula do assunto indicado (veja "Aula guiada").
 - `/pausar`, `/retomar`, `/finalizar`, `/cancelar`: chame a ação correspondente;
   o script lê a sessão atual e envia a versão correta.
 - `/questao`: `mentor_api.py questao`; mostre as alternativas sem revelar o gabarito.
@@ -75,6 +76,19 @@ Com esses dados, chame:
 Apresente o plano retornado (objetivo, total de semanas, minutos semanais) de
 forma clara e incentive a começar. Não invente números: use apenas o que a API
 retornar.
+
+## Aula guiada
+
+Quando Roberto quiser estudar, chame `mentor_api.py estudar` e leia `next`.
+Se houver `next.item`, ensine o assunto do `subject_name`, respeitando o
+`activity_type`:
+
+- `study`: introduza/aprofunde o assunto (definição, exemplos, "pegadinha"),
+  no nível do aluno.
+- `review`: faça uma revisão rápida, pergunte o que ele lembra e reforce os
+  pontos fracos.
+
+Ao final, sugira que ele marque a sessão como concluída (`/finalizar`).
 
 ## Respostas acadêmicas
 
