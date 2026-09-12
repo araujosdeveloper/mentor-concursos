@@ -24,6 +24,7 @@ required=(
   .github/workflows/validate.yml
   Dockerfile.validation
   database/migrations/002_academic_core.sql database/migrations/003_topic_cycle_guard.sql database/seeds/001_reference_taxonomy.sql
+  database/seeds/002_receita_federal_auditor_fiscal.sql scripts/seed-receita-federal-auditor.sh
   database/migrations/004_knowledge_pipeline.sql apps/worker/src/knowledge.py apps/worker/src/embedding_service.py apps/worker/src/pipeline.py
   database/migrations/006_official_source_refresh.sql apps/worker/src/source_refresh.py
   database/migrations/007_source_review_rbac.sql apps/api/src/knowledge_review.py
