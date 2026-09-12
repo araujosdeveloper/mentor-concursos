@@ -71,5 +71,14 @@ oficiais.
 
 ## Fora de escopo
 
-Busca web genérica, crawler, espelhamento, promoção automática e qualquer
-armazenamento local de conteúdo obtido externamente.
+Crawler, espelhamento, promoção automática e qualquer armazenamento local de
+conteúdo obtido externamente.
+
+## Busca web genérica (fallback)
+
+Além dos conectores de legislação e jurisprudência, um conector de busca na web
+(Tavily) é usado como **fallback**: somente quando os conectores primários não
+retornam evidência, a pergunta é enviada à busca geral (ex.: "qual o último
+edital do INSS?"). Cada resultado é tratado como evidência candidata com URL
+citável, nunca como autoridade. O token do provedor é um secret separado
+(`tavily_api_key`) e a ausência dele desativa apenas o fallback.

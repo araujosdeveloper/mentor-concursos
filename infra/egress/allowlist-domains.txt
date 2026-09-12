@@ -16,3 +16,4 @@ portal.stf.jus.br
 jurisprudencia.stf.jus.br
 scon.stj.jus.br
 jurisprudencias.ai
+api.tavily.com

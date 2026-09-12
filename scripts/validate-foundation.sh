@@ -51,12 +51,13 @@ required=(
   apps/external/fetch.py
   apps/external/connectors/__init__.py apps/external/connectors/legislation.py
   apps/external/connectors/jurisprudence.py
+  apps/external/connectors/search.py
   apps/external/ssl/gsgccr6alphasslca2025.crt
   apps/api/src/external.py
   tests/unit/test_source_catalog.py tests/unit/test_external_cache.py
   tests/unit/test_external_service.py tests/unit/test_external_api.py
   tests/unit/test_fetch.py tests/unit/test_legislation.py
-  tests/unit/test_jurisprudence.py
+  tests/unit/test_jurisprudence.py tests/unit/test_search.py
 )
 
 for path in "${required[@]}"; do
@@ -143,9 +144,11 @@ grep -Eq '^\.chatgpt\.com$' infra/egress/allowlist-domains.txt
 grep -Eq '^auth\.openai\.com$' infra/egress/allowlist-domains.txt
 grep -Eq '^www\.planalto\.gov\.br$' infra/egress/allowlist-domains.txt
 grep -Eq '^jurisprudencias\.ai$' infra/egress/allowlist-domains.txt
+grep -Eq '^api\.tavily\.com$' infra/egress/allowlist-domains.txt
 grep -Eq 'mentor-concursos-external:' docker-compose.yml
 grep -Eq 'mentor-concursos-egress-internal' docker-compose.yml
 grep -Eq 'jurisprudencias_api_token' docker-compose.yml
+grep -Eq 'tavily_api_key' docker-compose.yml
 if grep -Eq '^[[:space:]]*http_access[[:space:]]+allow[[:space:]]+all([[:space:]]|$)' infra/egress/squid.conf; then
   echo "FAIL proxy com liberação irrestrita" >&2
   exit 1

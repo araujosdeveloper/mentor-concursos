@@ -21,11 +21,15 @@ from apps.external.catalog import SourceCatalog, load_catalog
 from apps.external.connectors import Connector, ExternalQuery, SourceEvidence
 from apps.external.connectors.jurisprudence import JurisprudenceConnector
 from apps.external.connectors.legislation import LegislationConnector
+from apps.external.connectors.search import SearchConnector
 from apps.external.fetch import fetch
 
 CATALOG_PATH = Path(os.getenv("CATALOG_PATH", "/app/config/official-sources.yaml"))
 PORT = int(os.getenv("EXTERNAL_PORT", "8091"))
 logger = logging.getLogger("mentor.external")
+
+PRIMARY_CATEGORIES = ("legislacao_federal", "jurisprudencia")
+SEARCH_CATEGORY = "search"
 
 catalog: SourceCatalog | None = None
 cache: TransientCache | None = None
@@ -42,16 +46,22 @@ def populate_connectors() -> None:
     if catalog is None or cache is None:
         raise RuntimeError("catalog_not_loaded")
     register("legislacao_federal", LegislationConnector(catalog, cache, fetch))
-    token = _read_jurisprudencia_token()
-    if token:
+    jurisprudence_token = _read_token("JURISPRUDENCIAS_API_TOKEN_FILE", "/run/secrets/jurisprudencias_api_token")
+    if jurisprudence_token:
         base = os.getenv("JURISPRUDENCIAS_BASE_URL", "https://jurisprudencias.ai/api/v1")
-        register("jurisprudencia", JurisprudenceConnector(base, token, cache, fetch))
+        register("jurisprudencia", JurisprudenceConnector(base, jurisprudence_token, cache, fetch))
     else:
         logger.info("jurisprudence_token_missing")
+    tavily_token = _read_token("TAVILY_API_KEY_FILE", "/run/secrets/tavily_api_key")
+    if tavily_token:
+        base = os.getenv("TAVILY_BASE_URL", "https://api.tavily.com")
+        register(SEARCH_CATEGORY, SearchConnector(base, tavily_token, cache, fetch))
+    else:
+        logger.info("search_token_missing")
 
 
-def _read_jurisprudencia_token() -> str:
-    path = os.getenv("JURISPRUDENCIAS_API_TOKEN_FILE", "/run/secrets/jurisprudencias_api_token")
+def _read_token(env_var: str, default_path: str) -> str:
+    path = os.getenv(env_var, default_path)
     try:
         return Path(path).read_text(encoding="utf-8").strip()
     except OSError:
@@ -76,11 +86,15 @@ def _run_query(body: dict[str, object]) -> list[SourceEvidence]:
         if connector is None:
             raise ValueError("category_unavailable")
         selected = [connector]
+        search = None
     else:
-        selected = list(CONNECTORS.values())
+        selected = [CONNECTORS[c] for c in PRIMARY_CATEGORIES if c in CONNECTORS]
+        search = CONNECTORS.get(SEARCH_CATEGORY)
     evidence: list[SourceEvidence] = []
     for connector in selected:
         evidence.extend(connector.query(query))
+    if not evidence and search is not None:
+        evidence = search.query(query)
     return evidence[: query.max_results]
 
 
