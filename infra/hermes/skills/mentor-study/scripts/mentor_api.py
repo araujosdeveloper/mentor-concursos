@@ -125,6 +125,7 @@ def main() -> int:
     parser.add_argument("--deadline", default="")
     parser.add_argument("--days-per-week", default="")
     parser.add_argument("--hours-per-day", default="")
+    parser.add_argument("--level", default="")
     args = parser.parse_args()
     try:
         context = _trusted_context()
@@ -134,7 +135,10 @@ def main() -> int:
                 "current": _request("GET", "/api/v1/sessions/current", context),
             }
         elif args.action == "perfil":
-            result = _request("GET", "/api/v1/users/me", context)
+            if args.level:
+                result = _request("PATCH", "/api/v1/users/me", context, {"level": args.level})
+            else:
+                result = _request("GET", "/api/v1/users/me", context)
         elif args.action == "progresso":
             result = {
                 "goals": _request("GET", "/api/v1/goals", context),
