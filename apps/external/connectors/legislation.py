@@ -72,7 +72,7 @@ def _normalize_norm(value: str) -> str:
     return re.sub(r"[^0-9]", "", value)
 
 
-def _extract_snippet(text: str, article: str | None, limit: int = 1400) -> str | None:
+def _extract_snippet(text: str, article: str | None, limit: int = 2400) -> str | None:
     if not article:
         return re.sub(r"\s+", " ", text).strip()[:limit]
     pattern = re.compile(rf"\bArt\.\s*{re.escape(article)}(?![0-9])")

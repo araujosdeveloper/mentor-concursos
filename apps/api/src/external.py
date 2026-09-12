@@ -90,7 +90,7 @@ def answer(
         }
         for item in evidence[:3]
     ]
-    snippets = [item.get("snippet", "")[:700] for item in evidence[:3]]
+    snippets = [item.get("snippet", "")[:2400] for item in evidence[:3]]
     return {
         "state": "answered",
         "answer": "\n\n".join(snippets),
