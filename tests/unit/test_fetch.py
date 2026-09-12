@@ -64,3 +64,28 @@ def test_fetch_enforces_size_limit(monkeypatch) -> None:
             max_bytes=4,
             opener_factory=lambda: _Opener(b"x" * 100),
         )
+
+
+def test_fetch_follows_validated_redirect(monkeypatch) -> None:
+    monkeypatch.setattr(fetch_module, "validate_url", lambda *_a: "example.com")
+    import urllib.error
+    from email.message import Message
+
+    class RedirectOpener:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def open(self, request, timeout=None):
+            self.calls += 1
+            if self.calls == 1:
+                headers = Message()
+                headers["Location"] = "https://example.com/final"
+                raise urllib.error.HTTPError(request.full_url, 301, "moved", headers, None)
+            return _StreamResponse(b"final")
+
+    data = fetch_module.fetch(
+        "https://example.com/x",
+        allowed_hosts={"example.com"},
+        opener_factory=lambda: RedirectOpener(),
+    )
+    assert data == b"final"

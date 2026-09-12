@@ -19,13 +19,16 @@ def test_real_catalog_loads_and_validates() -> None:
     assert "stf-jurisprudencia" in keys
     assert "stj-jurisprudencia" in keys
     enabled = catalog.enabled()
-    assert [c.key for c in enabled] == ["lei-9784-camara"]
+    assert "lei-9784-camara" in [c.key for c in enabled]
+    assert "constituicao-federal-planalto" in [c.key for c in enabled]
+    assert len(enabled) == 10
 
 
 def test_enabled_filters_by_category_and_segment() -> None:
     catalog = load_catalog(REAL_CATALOG)
     assert catalog.enabled(category="jurisprudencia") == []
     assert catalog.enabled(category="legislacao_federal")[0].key == "lei-9784-camara"
+    assert catalog.enabled(category="constituicao")[0].key == "constituicao-federal-planalto"
 
 
 def _catalog(tmp_path: Path, sources: dict) -> None:
