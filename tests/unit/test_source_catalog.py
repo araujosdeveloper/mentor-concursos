@@ -21,7 +21,8 @@ def test_real_catalog_loads_and_validates() -> None:
     assert "lei-9784-camara" in [c.key for c in enabled]
     assert "constituicao-federal-planalto" in [c.key for c in enabled]
     assert "jurisprudencias-ai" in [c.key for c in enabled]
-    assert len(enabled) == 11
+    assert "cdc-lei-8078" in [c.key for c in enabled]
+    assert len(enabled) == 23
 
 
 def test_enabled_filters_by_category_and_segment() -> None:
