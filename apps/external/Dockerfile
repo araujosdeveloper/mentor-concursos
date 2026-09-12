@@ -5,6 +5,8 @@ RUN groupadd --gid 10001 mentor && useradd --uid 10001 --gid mentor --no-create-
 COPY requirements.lock ./
 COPY apps ./apps
 COPY config ./config
+COPY apps/external/ssl/gsgccr6alphasslca2025.crt /usr/local/share/ca-certificates/gsgccr6alphasslca2025.crt
+RUN update-ca-certificates
 RUN python -m pip install --require-hashes --no-deps -r requirements.lock
 USER 10001:10001
 CMD ["python", "-m", "apps.external.service"]

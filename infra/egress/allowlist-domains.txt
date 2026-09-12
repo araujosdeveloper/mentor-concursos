@@ -13,4 +13,5 @@ auth.openai.com
 www.planalto.gov.br
 www2.camara.leg.br
 portal.stf.jus.br
+jurisprudencia.stf.jus.br
 scon.stj.jus.br
