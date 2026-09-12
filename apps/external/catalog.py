@@ -38,6 +38,7 @@ class ConnectorSpec:
     strategy: str
     max_redirects: int
     enabled: bool
+    note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ def load_catalog(path: Path) -> SourceCatalog:
                 strategy=strategy,
                 max_redirects=int(entry.get("max_redirects", DEFAULT_MAX_REDIRECTS)),
                 enabled=bool(entry.get("enabled", False)),
+                note=entry.get("note"),
             )
         )
 

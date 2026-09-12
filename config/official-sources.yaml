@@ -31,7 +31,8 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www2.camara.leg.br"
-    canonical_url: "https://www2.camara.leg.br/legin/fed/lei/1999/lei-9784-29-janeiro-1999-322239-norma-pl.html"
+    canonical_url: "https://www2.camara.leg.br/legin/fed/lei/1999/lei-9784-29-janeiro-1999-322239-normaatualizada-pl.html"
+    note: "Lei nº 9.784/1999 — texto atualizado (HTML estático)."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["application/pdf", "text/plain"]

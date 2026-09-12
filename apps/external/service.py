@@ -19,6 +19,8 @@ from pathlib import Path
 from apps.external.cache import TransientCache
 from apps.external.catalog import SourceCatalog, load_catalog
 from apps.external.connectors import Connector, ExternalQuery, SourceEvidence
+from apps.external.connectors.legislation import LegislationConnector
+from apps.external.fetch import fetch
 
 CATALOG_PATH = Path(os.getenv("CATALOG_PATH", "/app/config/official-sources.yaml"))
 PORT = int(os.getenv("EXTERNAL_PORT", "8091"))
@@ -32,6 +34,13 @@ CONNECTORS: dict[str, Connector] = {}
 def register(category: str, connector: Connector) -> None:
     """Registra um conector real por categoria; chamado no bootstrap da produção."""
     CONNECTORS[category] = connector
+
+
+def populate_connectors() -> None:
+    """Registra os conectores disponíveis na produção (Fase 2)."""
+    if catalog is None or cache is None:
+        raise RuntimeError("catalog_not_loaded")
+    register("legislacao_federal", LegislationConnector(catalog, cache, fetch))
 
 
 def _run_query(body: dict[str, object]) -> list[SourceEvidence]:
@@ -122,6 +131,7 @@ def main() -> None:
         password=os.getenv("REDIS_PASSWORD", ""),
         ttl_seconds=int(os.getenv("EXTERNAL_CACHE_TTL_SECONDS", "300")),
     )
+    populate_connectors()
     logger.info("external_service_started sources=%s connectors=%s", len(catalog.connectors), sorted(CONNECTORS))
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
