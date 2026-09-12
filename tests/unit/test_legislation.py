@@ -124,3 +124,15 @@ def test_cache_avoids_refetch() -> None:
     connector.query(ExternalQuery(text="Lei 9.784 art 1"))
     connector.query(ExternalQuery(text="Lei 9.784 art 1"))
     assert len(calls) == 1
+
+
+def test_new_code_aliases_resolve_from_real_catalog() -> None:
+    from pathlib import Path
+
+    from apps.external.catalog import load_catalog
+
+    catalog = load_catalog(Path(__file__).parents[2] / "config" / "official-sources.yaml")
+    connector = LegislationConnector(catalog, None, lambda *_a, **_k: b"")
+    assert connector._resolve_source("LRF art 1").key == "lc-101-lrf"
+    assert connector._resolve_source("CDC art 6").key == "cdc-lei-8078"
+    assert connector._resolve_source("mandado de segurança").key == "lei-12016-ms"
