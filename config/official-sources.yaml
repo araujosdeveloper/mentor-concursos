@@ -32,7 +32,7 @@ sources:
     authority: primary_official
     host: "www2.camara.leg.br"
     canonical_url: "https://www2.camara.leg.br/legin/fed/lei/1999/lei-9784-29-janeiro-1999-322239-normaatualizada-pl.html"
-    note: "Lei nº 9.784/1999 — texto atualizado (HTML estático)."
+    note: "Lei nº 9.784/1999 — processo administrativo federal."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["application/pdf", "text/plain"]
@@ -46,14 +46,14 @@ sources:
     category: constituicao
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Confirmar URL do texto consolidado no portal do Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm"
+    note: "Constituição da República Federativa do Brasil de 1988."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 52428800
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   lei-14133-licitacoes:
     organization: "Presidência da República — Planalto"
@@ -61,14 +61,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Lei nº 14.133/2021 — Licitações e contratos. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/L14133.htm"
+    note: "Lei nº 14.133/2021 — licitações e contratos administrativos."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 20971520
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   lei-8112-servidores:
     organization: "Presidência da República — Planalto"
@@ -76,14 +76,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Lei nº 8.112/1990 — Regime jurídico dos servidores. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/leis/L8112cons.htm"
+    note: "Lei nº 8.112/1990 — regime jurídico dos servidores públicos civis."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 20971520
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   ctn-lei-5172:
     organization: "Presidência da República — Planalto"
@@ -91,14 +91,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Código Tributário Nacional — Lei nº 5.172/1966. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/leis/L5172Compilado.htm"
+    note: "Lei nº 5.172/1966 — Código Tributário Nacional."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 20971520
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   clt-decreto-lei-5452:
     organization: "Presidência da República — Planalto"
@@ -106,14 +106,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Consolidação das Leis do Trabalho — Decreto-Lei nº 5.452/1943. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452.htm"
+    note: "Decreto-Lei nº 5.452/1943 — Consolidação das Leis do Trabalho."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 52428800
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   codigo-civil-lei-10406:
     organization: "Presidência da República — Planalto"
@@ -121,14 +121,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Código Civil — Lei nº 10.406/2002. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/leis/2002/L10406compilada.htm"
+    note: "Lei nº 10.406/2002 — Código Civil."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 52428800
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   codigo-penal-decreto-lei-2848:
     organization: "Presidência da República — Planalto"
@@ -136,14 +136,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Código Penal — Decreto-Lei nº 2.848/1940. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"
+    note: "Decreto-Lei nº 2.848/1940 — Código Penal."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 20971520
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   cpc-lei-13105:
     organization: "Presidência da República — Planalto"
@@ -151,14 +151,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Código de Processo Civil — Lei nº 13.105/2015. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
+    note: "Lei nº 13.105/2015 — Código de Processo Civil."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 52428800
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   cpp-decreto-lei-3689:
     organization: "Presidência da República — Planalto"
@@ -166,14 +166,14 @@ sources:
     category: legislacao_federal
     authority: primary_official
     host: "www.planalto.gov.br"
-    canonical_url: null
-    note: "Código de Processo Penal — Decreto-Lei nº 3.689/1941. Confirmar URL no Planalto."
+    canonical_url: "https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm"
+    note: "Decreto-Lei nº 3.689/1941 — Código de Processo Penal."
     update_strategy: "conditional_headers_then_sha256"
     minimum_check_interval: "7d"
     formats: ["text/html", "text/plain"]
     max_bytes: 20971520
     max_redirects: 3
-    enabled: false
+    enabled: true
 
   stf-jurisprudencia:
     organization: "Supremo Tribunal Federal"

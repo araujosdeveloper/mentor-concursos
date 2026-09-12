@@ -1,14 +1,20 @@
-"""Busca HTTP endurecida para consulta externa (HTTPS, SSRF, limite)."""
+"""Busca HTTP endurecida para consulta externa (HTTPS, SSRF, limite, redirects)."""
 
 from __future__ import annotations
 
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
-USER_AGENT = "MentorConcursos-ExternalConsultation/1.0"
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; MentorConcursos/1.0; "
+    "+github.com/araujosdeveloper/mentor-concursos)"
+)
 DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 DEFAULT_DEADLINE_SECONDS = 30.0
+DEFAULT_MAX_REDIRECTS = 3
+_REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -40,14 +46,30 @@ def fetch(
     allowed_hosts: set[str],
     max_bytes: int = DEFAULT_MAX_BYTES,
     deadline_seconds: float = DEFAULT_DEADLINE_SECONDS,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
     opener_factory=None,
 ) -> bytes:
-    """Busca uma URL única, sem redirect automático, com limite de tamanho e prazo."""
-    validate_url(url, allowed_hosts)
+    """Busca uma URL, seguindo no máximo `max_redirects` saltos validados."""
     opener = opener_factory() if opener_factory else urllib.request.build_opener(NoRedirect())
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     deadline = time.monotonic() + deadline_seconds
-    with opener.open(request, timeout=deadline_seconds) as response:
+    current_url = url
+    for _ in range(max_redirects + 1):
+        validate_url(current_url, allowed_hosts)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError("fetch_timeout")
+        request = urllib.request.Request(current_url, headers={"User-Agent": USER_AGENT})
+        try:
+            response = opener.open(request, timeout=remaining)
+        except urllib.error.HTTPError as error:
+            if error.code in _REDIRECT_CODES and error.headers.get("Location"):
+                current_url = urllib.parse.urljoin(current_url, error.headers["Location"])
+                continue
+            raise
+        break
+    else:
+        raise ValueError("too_many_redirects")
+    with response:
         data = bytearray()
         while True:
             if time.monotonic() > deadline:
