@@ -139,8 +139,8 @@ def main() -> int:
             if not args.query.strip():
                 raise RuntimeError("informe uma pergunta")
             result = _request(
-                "POST", "/api/v1/rag/answer", context,
-                {"query": args.query, "limit": 5},
+                "POST", "/api/v1/external/answer", context,
+                {"query": args.query},
             )
         elif args.action == "estudar":
             goals = _request("GET", "/api/v1/goals", context).get("items", [])

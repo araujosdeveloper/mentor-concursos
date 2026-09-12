@@ -185,7 +185,7 @@ async def dispatch(event, command):
             if not args:
                 raise RuntimeError("informe uma pergunta")
             result = await asyncio.to_thread(
-                _call, "POST", "/api/v1/rag/answer", ctx, {"query": args, "limit": 5}
+                _call, "POST", "/api/v1/external/answer", ctx, {"query": args}
             )
         elif command == "responder":
             qid = CURRENT.get(key)
