@@ -47,9 +47,34 @@ modo conversacional genérico ou use conhecimento externo.
 - `/responder <letra>`: envie a letra e o `question_id` da questão atual para `mentor_api.py responder`; mostre correção, explicação e citação retornadas.
 - `/simulado <quantidade>`: `mentor_api.py simulado --quantity <quantidade>` (máximo 20).
 - `/revisar`: `mentor_api.py revisar`; `/erros`: `mentor_api.py erros`; `/desempenho`: `mentor_api.py desempenho`.
+- `/concursos`: `mentor_api.py concursos` — lista os concursos disponíveis.
+- `/plano`: cria o plano de estudo (veja "Plano de estudo" abaixo).
 
 Pergunta em linguagem natural pode usar `perguntar` quando for claramente uma
-dúvida acadêmica. Não use a skill para conversa casual ou para inventar plano.
+dúvida acadêmica. Não use a skill para conversa casual.
+
+## Plano de estudo (onboarding interativo)
+
+Quando Roberto quiser montar o plano de estudo para um concurso, conduza uma
+conversa curta, uma pergunta por vez, e só então crie o plano:
+
+1. **Concurso**: liste com `mentor_api.py concursos` e pergunte qual cargo
+   (use o `id` do exame retornado).
+2. **Prazo**: pergunte a data da prova (`AAAA-MM-DD`). Se ele não souber, peça
+   um prazo estimado.
+3. **Disponibilidade**: pergunte quantos dias por semana e quantas horas por
+   dia ele pode estudar.
+4. **Nível** (opcional): pergunte o ponto de partida (zero/intermediário/avançado)
+   para ajustar o tom das aulas.
+
+Com esses dados, chame:
+
+    mentor_api.py plano --exam-id <id> --deadline <AAAA-MM-DD> \
+      --days-per-week <n> --hours-per-day <n>
+
+Apresente o plano retornado (objetivo, total de semanas, minutos semanais) de
+forma clara e incentive a começar. Não invente números: use apenas o que a API
+retornar.
 
 ## Respostas acadêmicas
 

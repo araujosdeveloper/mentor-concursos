@@ -114,12 +114,17 @@ def main() -> int:
         "inicio", "perfil", "progresso", "perguntar", "estudar",
             "pausar", "retomar", "finalizar", "cancelar", "questao",
             "responder", "simulado", "revisar", "erros", "desempenho",
+            "concursos", "plano",
         ],
     )
     parser.add_argument("--query", default="")
     parser.add_argument("--option", default="")
     parser.add_argument("--question-id", default="")
     parser.add_argument("--quantity", default="5")
+    parser.add_argument("--exam-id", default="")
+    parser.add_argument("--deadline", default="")
+    parser.add_argument("--days-per-week", default="")
+    parser.add_argument("--hours-per-day", default="")
     args = parser.parse_args()
     try:
         context = _trusted_context()
@@ -165,6 +170,15 @@ def main() -> int:
             result = _request("GET", "/api/v1/practice/errors", context)
         elif args.action == "desempenho":
             result = _request("GET", "/api/v1/practice/performance", context)
+        elif args.action == "concursos":
+            result = _request("GET", "/api/v1/exams", context)
+        elif args.action == "plano":
+            if not all([args.exam_id, args.deadline, args.days_per_week, args.hours_per_day]):
+                raise RuntimeError("informe concurso, prazo, dias por semana e horas por dia")
+            result = _request("POST", "/api/v1/study/plan", context,
+                              {"exam_id": args.exam_id, "deadline": args.deadline,
+                               "days_per_week": int(args.days_per_week),
+                               "hours_per_day": int(args.hours_per_day)})
         elif args.action == "cancelar":
             result = _request("POST", "/api/v1/practice/cancel", context, {"cancel": True})
             if result.get("state") == "nothing_to_cancel":

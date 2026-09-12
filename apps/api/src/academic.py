@@ -305,6 +305,13 @@ def list_subjects(_: TokenDep, settings: Annotated[Settings, Depends(get_setting
     return {"items": [_row_response(row) for row in rows], "next_cursor": None}
 
 
+@router.get("/exams")
+def list_exams(_: TokenDep, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, Any]:
+    with _connect(settings) as connection:
+        rows = connection.execute("SELECT * FROM mentor_concursos.exams ORDER BY organization, role").fetchall()
+    return {"items": [_row_response(row) for row in rows], "next_cursor": None}
+
+
 @router.get("/subjects/{subject_id}/topics")
 def list_topics(subject_id: uuid.UUID, _: TokenDep, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, Any]:
     with _connect(settings) as connection:
