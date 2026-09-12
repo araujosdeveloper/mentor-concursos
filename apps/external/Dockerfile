@@ -8,5 +8,6 @@ COPY config ./config
 COPY apps/external/ssl/gsgccr6alphasslca2025.crt /usr/local/share/ca-certificates/gsgccr6alphasslca2025.crt
 RUN update-ca-certificates
 RUN python -m pip install --require-hashes --no-deps -r requirements.lock
-USER 10001:10001
+COPY --chmod=755 apps/external/entrypoint.sh /usr/local/bin/mentor-external-entrypoint
+ENTRYPOINT ["mentor-external-entrypoint"]
 CMD ["python", "-m", "apps.external.service"]

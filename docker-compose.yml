@@ -141,7 +141,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       EXTERNAL_CACHE_TTL_SECONDS: ${EXTERNAL_CACHE_TTL_SECONDS:-300}
       JURISPRUDENCIAS_BASE_URL: ${JURISPRUDENCIAS_BASE_URL:-https://jurisprudencias.ai/api/v1}
-      JURISPRUDENCIAS_API_TOKEN_FILE: /run/secrets/jurisprudencias_api_token
+      JURISPRUDENCIAS_API_TOKEN_FILE: /tmp/jurisprudencias_api_token
       HTTP_PROXY: http://mentor-concursos-egress-proxy:3128
       HTTPS_PROXY: http://mentor-concursos-egress-proxy:3128
       NO_PROXY: mentor-concursos-redis,localhost,127.0.0.1
