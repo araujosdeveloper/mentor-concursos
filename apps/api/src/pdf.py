@@ -6,6 +6,7 @@ import re
 
 from fastapi import APIRouter, Response
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 from pydantic import Field
 
 from .academic import StrictModel, TokenDep, UserDep
@@ -30,7 +31,7 @@ def render_lesson_pdf(title: str, markdown: str) -> bytes:
     pdf.add_page()
 
     pdf.set_font("DejaVu", "B", 15)
-    pdf.multi_cell(0, 8, title)
+    pdf.multi_cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(3)
 
     body = 10.5
@@ -39,24 +40,23 @@ def render_lesson_pdf(title: str, markdown: str) -> bytes:
         line = raw.rstrip()
         if not line.strip():
             pdf.ln(2.5)
-        elif line.startswith("### "):
-            pdf.set_font("DejaVu", "B", 11.5)
-            pdf.multi_cell(0, 6.5, line[4:])
-            pdf.set_font("DejaVu", "", body)
+            continue
+        heading = None
+        text = line
+        if line.startswith("### "):
+            heading, text = ("B", 11.5), line[4:]
         elif line.startswith("## "):
-            pdf.set_font("DejaVu", "B", 12.5)
-            pdf.multi_cell(0, 7, line[3:])
-            pdf.set_font("DejaVu", "", body)
+            heading, text = ("B", 12.5), line[3:]
         elif line.startswith("# "):
-            pdf.set_font("DejaVu", "B", 14)
-            pdf.multi_cell(0, 8, line[2:])
-            pdf.set_font("DejaVu", "", body)
+            heading, text = ("B", 14), line[2:]
         elif _BULLET.match(line):
-            text = _BULLET.sub("", line, count=1)
-            pdf.set_x(pdf.l_margin + 4)
-            pdf.multi_cell(0, 6, "\u2022 " + text, markdown=True)
+            text = "\u2022 " + _BULLET.sub("", line, count=1)
+        if heading:
+            pdf.set_font("DejaVu", *heading)
+            pdf.multi_cell(0, 6.5, text, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_font("DejaVu", "", body)
         else:
-            pdf.multi_cell(0, 6, line, markdown=True)
+            pdf.multi_cell(0, 6, text, markdown=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     return bytes(pdf.output())
 
 
