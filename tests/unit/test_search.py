@@ -11,13 +11,13 @@ def _connector(fetch) -> SearchConnector:
 
 
 def _fetch_with(payload: dict):
-    calls: dict[str, str] = {}
+    calls: dict[str, object] = {"bodies": []}
 
     def fetch(url: str, allowed_hosts=None, headers=None, method="GET", body=None) -> bytes:
         calls["url"] = url
         calls["method"] = method
         calls["auth"] = (headers or {}).get("Authorization", "")
-        calls["body"] = (body or b"").decode("utf-8", "replace")
+        calls["bodies"].append((body or b"").decode("utf-8", "replace"))
         return json.dumps(payload).encode()
 
     fetch.calls = calls  # type: ignore[attr-defined]
@@ -52,3 +52,18 @@ def test_search_tolerates_missing_results() -> None:
 def test_search_ignores_blank_query() -> None:
     fetch = _fetch_with({"results": []})
     assert _connector(fetch).query(ExternalQuery(text="   ")) == []
+
+
+def test_edital_query_prioritizes_trusted_domains() -> None:
+    fetch = _fetch_with({"results": []})
+    _connector(fetch).query(ExternalQuery(text="edital do banco do brasil"))
+    first_body = fetch.calls["bodies"][0]
+    assert "grancursosonline.com.br" in first_body
+    assert "estrategiaconcursos.com.br" in first_body
+    assert "include_domains" in first_body
+
+
+def test_edital_query_appends_current_year() -> None:
+    fetch = _fetch_with({"results": []})
+    _connector(fetch).query(ExternalQuery(text="edital do banco do brasil"))
+    assert "2026" in fetch.calls["bodies"][0]
