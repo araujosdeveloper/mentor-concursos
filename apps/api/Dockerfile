@@ -2,6 +2,7 @@ FROM python:3.12.10-slim-bookworm@sha256:97983fa8cc88343512862c62307159a82261c35
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 RUN groupadd --gid 10001 mentor && useradd --uid 10001 --gid mentor --no-create-home mentor
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 COPY requirements.lock ./
 COPY apps ./apps
 COPY database ./database

@@ -18,6 +18,7 @@ from .internal import router as internal_router
 from .knowledge import router as knowledge_router
 from .metrics import metrics
 from .metrics import router as metrics_router
+from .pdf import router as pdf_router
 from .practice import router as practice_router
 from .study_plan import router as study_plan_router
 
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     application.include_router(external_router)
     application.include_router(practice_router)
     application.include_router(study_plan_router)
+    application.include_router(pdf_router)
 
     @application.exception_handler(Exception)
     async def unhandled_error(request: Request, _: Exception) -> JSONResponse:

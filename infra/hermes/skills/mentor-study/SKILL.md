@@ -50,6 +50,7 @@ modo conversacional genérico ou use conhecimento externo.
 - `/revisar`: `mentor_api.py revisar`; `/erros`: `mentor_api.py erros`; `/desempenho`: `mentor_api.py desempenho`.
 - `/concursos`: `mentor_api.py concursos` — lista os concursos disponíveis.
 - `/plano`: cria o plano de estudo (veja "Plano de estudo" abaixo).
+- `/salvar`: exporta a conversa atual como PDF e envia o arquivo (gerenciado pelo gateway).
 
 Pergunta em linguagem natural pode usar `perguntar` quando for claramente uma
 dúvida acadêmica. Não use a skill para conversa casual.
