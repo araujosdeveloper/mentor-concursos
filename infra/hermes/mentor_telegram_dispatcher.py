@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from contextlib import suppress
 
 from mentor_consultation_memory import context_for, record
 
@@ -123,7 +124,10 @@ def _call_bytes(method, path, ctx, payload=None) -> bytes:
         TimeoutError,
     ) as error:
         if isinstance(error, urllib.error.HTTPError):
-            LOGGER.warning("mentor_api_request_failed status=%s", error.code)
+            detail = ""
+            with suppress(Exception):
+                detail = error.read().decode("utf-8", "replace")[:400]
+            LOGGER.warning("mentor_api_request_failed status=%s detail=%s", error.code, detail)
         else:
             LOGGER.warning("mentor_api_request_failed class=%s", type(error).__name__)
         raise RuntimeError("operação acadêmica indisponível") from None
