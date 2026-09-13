@@ -292,6 +292,10 @@ def install(module):
         source = event.source
         try:
             ctx = _context(source)
+        except Exception:  # noqa: BLE001
+            LOGGER.exception("salvar_context_failed")
+            return "Não consegui validar a identidade para salvar a aula."
+        try:
             session_entry = await self.async_session_store.get_or_create_session(source)
             export_data = await self._session_db.export_session(session_entry.session_id)
             if not export_data:
@@ -299,19 +303,27 @@ def install(module):
             from hermes_cli.session_export import render_session_for_save
 
             markdown = render_session_for_save(export_data, "md")
+        except Exception:  # noqa: BLE001
+            LOGGER.exception("salvar_export_failed")
+            return "Não consegui exportar a conversa para gerar o PDF."
+        try:
             pdf_bytes = _call_bytes(
                 "POST", "/api/v1/lessons/pdf", ctx,
                 {"title": "Aula — Mentor Concursos", "content": markdown},
             )
+        except Exception:  # noqa: BLE001
+            LOGGER.exception("salvar_pdf_generation_failed")
+            return "Não consegui gerar o PDF da aula."
+        try:
             import tempfile
 
             pdf_path = os.path.join(tempfile.gettempdir(), f"aula_{ctx['user_id']}.pdf")
             with open(pdf_path, "wb") as f:
                 f.write(pdf_bytes)
-            adapter = getattr(self, "get_adapter", None)
+            adapter = getattr(self, "_adapter_for_source", None)
             if adapter is None:
                 return "Não foi possível enviar o documento."
-            adapter = adapter(source.platform)
+            adapter = adapter(source)
             await adapter.send_document(
                 chat_id=source.chat_id,
                 file_path=pdf_path,
@@ -319,9 +331,9 @@ def install(module):
                 file_name="aula.pdf",
             )
             return "Aula salva em PDF e enviada."
-        except Exception as error:  # noqa: BLE001
-            LOGGER.warning("salvar_pdf_failed class=%s", type(error).__name__)
-            return "Não foi possível salvar a aula em PDF."
+        except Exception:  # noqa: BLE001
+            LOGGER.exception("salvar_send_failed")
+            return "PDF gerado, mas não consegui enviar o arquivo."
 
     runner._handle_message = guarded
     INSTALLED = True
