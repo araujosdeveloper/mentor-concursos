@@ -6,11 +6,31 @@ import hashlib
 import json
 import urllib.parse
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from apps.external.cache import TransientCache
 from apps.external.connectors import ExternalQuery, SourceEvidence
 
 FetchFn = Callable[..., bytes]
+
+_EDITAL_KEYWORDS = (
+    "edital",
+    "concurso",
+    "banca",
+    "vagas",
+    "inscri",
+    "certame",
+    "seleção",
+    "selecao",
+    "prova",
+    "cargo",
+)
+_PRIORITY_DOMAINS = ["grancursosonline.com.br", "estrategiaconcursos.com.br"]
+
+
+def _is_edital_query(text: str) -> bool:
+    lowered = text.casefold()
+    return any(keyword in lowered for keyword in _EDITAL_KEYWORDS)
 
 
 class SearchConnector:
@@ -27,11 +47,21 @@ class SearchConnector:
     def _host(self) -> str:
         return urllib.parse.urlparse(self._base_url).hostname or "api.tavily.com"
 
-    def _search(self, query: ExternalQuery) -> dict:
+    def _search(
+        self, query: ExternalQuery, *, text: str, include_domains: list[str] | None = None
+    ) -> dict:
         url = f"{self._base_url}/search"
-        cache_key = f"tavily:{query.text.casefold()}:{query.max_results}"
+        domains_key = ",".join(include_domains or [])
+        cache_key = f"tavily:{text.casefold()}:{query.max_results}:{domains_key}"
         content = self._cache.get(cache_key) if self._cache else None
         if content is None:
+            payload: dict = {
+                "query": text,
+                "max_results": query.max_results,
+                "search_depth": "basic",
+            }
+            if include_domains:
+                payload["include_domains"] = include_domains
             raw = self._fetch(
                 url,
                 allowed_hosts={self._host()},
@@ -40,13 +70,7 @@ class SearchConnector:
                     "Content-Type": "application/json",
                 },
                 method="POST",
-                body=json.dumps(
-                    {
-                        "query": query.text,
-                        "max_results": query.max_results,
-                        "search_depth": "basic",
-                    }
-                ).encode(),
+                body=json.dumps(payload).encode(),
             )
             content = raw.decode("utf-8", "replace")
             if self._cache:
@@ -73,8 +97,30 @@ class SearchConnector:
             source_date=result.get("published_date"),
         )
 
+    def _recent_text(self, text: str) -> str:
+        year = str(datetime.now(UTC).year)
+        return text if year in text else f"{text} {year}"
+
     def query(self, query: ExternalQuery) -> list[SourceEvidence]:
         if not query.text.strip():
             return []
-        payload = self._search(query)
-        return [self._to_evidence(r) for r in self._results(payload)[: query.max_results]]
+        results: list[SourceEvidence] = []
+        seen: set[str] = set()
+        if _is_edital_query(query.text):
+            text = self._recent_text(query.text)
+            for search_text, domains in (
+                (text, _PRIORITY_DOMAINS),
+                (text, None),
+            ):
+                payload = self._search(query, text=search_text, include_domains=domains)
+                for item in self._results(payload):
+                    evidence = self._to_evidence(item)
+                    if evidence.url and evidence.url not in seen:
+                        seen.add(evidence.url)
+                        results.append(evidence)
+                    if len(results) >= query.max_results:
+                        return results
+        else:
+            for item in self._results(self._search(query, text=query.text)):
+                results.append(self._to_evidence(item))
+        return results[: query.max_results]
