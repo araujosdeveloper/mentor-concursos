@@ -12,6 +12,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /workspace
 
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
+
 # This image is validation-only. Production images install requirements.lock,
 # while this target additionally installs the hashed development lock.
 COPY requirements-dev.lock ./
