@@ -83,10 +83,10 @@ fi
 # Reconcile all managed study aliases in an existing dedicated profile. The
 # original slash command is part of the target so the skill receives an
 # explicit operation instead of entering its generic conversational mode.
+# Only missing entries are appended; existing entries are never rewritten, so
+# multiline entries from older profiles remain valid YAML.
 for command_name in inicio ajuda perguntar perfil progresso estudar pausar retomar finalizar cancelar questao responder simulado revisar erros desempenho; do
-  if grep -q "^  ${command_name}:" "$DATA_DIR/config.yaml"; then
-    sed -i "s#^  ${command_name}:.*#  ${command_name}: {type: alias, target: \"mentor-study /${command_name}\"}#" "$DATA_DIR/config.yaml"
-  else
+  if ! grep -q "^  ${command_name}:" "$DATA_DIR/config.yaml"; then
     printf '  %s: {type: alias, target: "mentor-study /%s"}\n' "$command_name" "$command_name" >> "$DATA_DIR/config.yaml"
   fi
 done

@@ -19,7 +19,7 @@ _BULLET = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 
 class LessonPdfRequest(StrictModel):
     title: str = Field(min_length=1, max_length=200)
-    content: str = Field(min_length=1, max_length=100_000)
+    content: str = Field(min_length=1, max_length=1_000_000)
 
 
 def render_lesson_pdf(title: str, markdown: str) -> bytes:
