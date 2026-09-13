@@ -254,22 +254,30 @@ async def dispatch(event, command):
         return "Erro técnico temporário. Nenhuma operação acadêmica foi realizada."
 
 
-def _last_lesson_markdown(session_id: str) -> str:
-    """Extrai apenas a última aula (resposta substantiva do professor)."""
+def _lesson_markdowns(session_id: str, limit: int = 10) -> list[str]:
+    """Retorna as últimas aulas (respostas substantivas), da mais recente para a mais antiga."""
     import sqlite3
 
     db_path = os.path.join(os.environ.get("HERMES_HOME", "/opt/data"), "state.db")
     connection = sqlite3.connect(db_path)
     try:
-        row = connection.execute(
+        rows = connection.execute(
             "SELECT content FROM messages WHERE session_id=? AND role='assistant' "
             "AND content IS NOT NULL AND length(trim(content)) > 200 "
-            "ORDER BY timestamp DESC LIMIT 1",
-            (session_id,),
-        ).fetchone()
+            "ORDER BY timestamp DESC LIMIT ?",
+            (session_id, limit),
+        ).fetchall()
     finally:
         connection.close()
-    return row[0] if row else ""
+    return [r[0] for r in rows]
+
+
+def _lesson_title(markdown: str) -> str:
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            return stripped.lstrip("#").strip()
+    return "Aula"
 
 
 def install(module):
@@ -286,6 +294,8 @@ def install(module):
         is_telegram = getattr(getattr(event.source, "platform", None), "value", "") == "telegram"
         if command == "salvar" and is_telegram:
             return await _handle_salvar(self, event)
+        if command == "aulas" and is_telegram:
+            return await _handle_aulas(self, event)
         if command in COMMANDS and is_telegram:
             return await dispatch(event, command)
         source = getattr(event, "source", None)
@@ -315,17 +325,24 @@ def install(module):
             return "Não consegui validar a identidade para salvar a aula."
         try:
             session_entry = await self.async_session_store.get_or_create_session(source)
-            markdown = _last_lesson_markdown(session_entry.session_id)
-            if not markdown:
+            lessons = _lesson_markdowns(session_entry.session_id)
+            if not lessons:
                 return "Nenhuma aula encontrada nesta sessão para salvar."
+            raw_arg = (event.get_command_args() or "").strip()
+            index = 1
+            if raw_arg:
+                try:
+                    index = int(raw_arg)
+                except ValueError:
+                    return "Use /salvar <número> (ex.: /salvar 1 para a mais recente)."
+            if index < 1 or index > len(lessons):
+                return f"Há {len(lessons)} aulas disponíveis. Use /aulas para listá-las."
+            markdown = lessons[index - 1]
         except Exception:  # noqa: BLE001
             LOGGER.exception("salvar_export_failed")
-            return "Não consegui extrair a última aula da conversa."
+            return "Não consegui extrair a aula da conversa."
         try:
-            title = "Aula"
-            first_line = markdown.splitlines()[0].strip()
-            if first_line.startswith("#"):
-                title = first_line.lstrip("#").strip()
+            title = _lesson_title(markdown)
             pdf_bytes = _call_bytes(
                 "POST", "/api/v1/lessons/pdf", ctx,
                 {"title": title, "content": markdown},
@@ -353,6 +370,23 @@ def install(module):
         except Exception:  # noqa: BLE001
             LOGGER.exception("salvar_send_failed")
             return "PDF gerado, mas não consegui enviar o arquivo."
+
+    async def _handle_aulas(self, event):
+        source = event.source
+        try:
+            session_entry = await self.async_session_store.get_or_create_session(source)
+            lessons = _lesson_markdowns(session_entry.session_id)
+        except Exception:  # noqa: BLE001
+            LOGGER.exception("aulas_failed")
+            return "Não consegui listar as aulas."
+        if not lessons:
+            return "Nenhuma aula encontrada nesta sessão."
+        lines = ["Aulas recentes:"]
+        for i, markdown in enumerate(lessons, start=1):
+            title = _lesson_title(markdown)
+            lines.append(f"{i}. {title}")
+        lines.append("Para salvar em PDF: /salvar <número>")
+        return "\n".join(lines)
 
     runner._handle_message = guarded
     INSTALLED = True
