@@ -8,8 +8,10 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 import uuid
@@ -280,6 +282,13 @@ def _lesson_title(markdown: str) -> str:
     return "Aula"
 
 
+def _slugify(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text)
+    ascii_text = "".join(c for c in normalized if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower()
+    return slug[:80] or "aula"
+
+
 def install(module):
     global INSTALLED
     runner = getattr(module, "GatewayRunner", None)
@@ -363,8 +372,8 @@ def install(module):
             await adapter.send_document(
                 chat_id=source.chat_id,
                 file_path=pdf_path,
-                caption="Aula em PDF",
-                file_name="aula.pdf",
+                caption=title,
+                file_name=f"{_slugify(title)}.pdf",
             )
             return "Aula salva em PDF e enviada."
         except Exception:  # noqa: BLE001
