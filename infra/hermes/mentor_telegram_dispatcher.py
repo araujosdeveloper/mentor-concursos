@@ -254,6 +254,24 @@ async def dispatch(event, command):
         return "Erro técnico temporário. Nenhuma operação acadêmica foi realizada."
 
 
+def _last_lesson_markdown(session_id: str) -> str:
+    """Extrai apenas a última aula (resposta substantiva do professor)."""
+    import sqlite3
+
+    db_path = os.path.join(os.environ.get("HERMES_HOME", "/opt/data"), "state.db")
+    connection = sqlite3.connect(db_path)
+    try:
+        row = connection.execute(
+            "SELECT content FROM messages WHERE session_id=? AND role='assistant' "
+            "AND content IS NOT NULL AND length(trim(content)) > 200 "
+            "ORDER BY timestamp DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+    finally:
+        connection.close()
+    return row[0] if row else ""
+
+
 def install(module):
     global INSTALLED
     runner = getattr(module, "GatewayRunner", None)
@@ -297,19 +315,20 @@ def install(module):
             return "Não consegui validar a identidade para salvar a aula."
         try:
             session_entry = await self.async_session_store.get_or_create_session(source)
-            export_data = await self._session_db.export_session(session_entry.session_id)
-            if not export_data:
-                return "Nenhuma mensagem encontrada nesta sessão para salvar."
-            from hermes_cli.session_export import render_session_for_save
-
-            markdown = render_session_for_save(export_data, "md")
+            markdown = _last_lesson_markdown(session_entry.session_id)
+            if not markdown:
+                return "Nenhuma aula encontrada nesta sessão para salvar."
         except Exception:  # noqa: BLE001
             LOGGER.exception("salvar_export_failed")
-            return "Não consegui exportar a conversa para gerar o PDF."
+            return "Não consegui extrair a última aula da conversa."
         try:
+            title = "Aula"
+            first_line = markdown.splitlines()[0].strip()
+            if first_line.startswith("#"):
+                title = first_line.lstrip("#").strip()
             pdf_bytes = _call_bytes(
                 "POST", "/api/v1/lessons/pdf", ctx,
-                {"title": "Aula — Mentor Concursos", "content": markdown},
+                {"title": title, "content": markdown},
             )
         except Exception:  # noqa: BLE001
             LOGGER.exception("salvar_pdf_generation_failed")
