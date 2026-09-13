@@ -9,6 +9,7 @@ description = "Fundação da API e do worker do Mentor Concursos"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.141.1",
+  "fpdf2==2.8.8",
   "psycopg[binary]==3.2.9",
   "pydantic-settings==2.10.1",
   "redis==6.4.0",

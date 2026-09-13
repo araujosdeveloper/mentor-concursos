@@ -35,6 +35,7 @@ required=(
   tests/unit/test_set_user_role.py tests/integration/verify-migration-007.sh
   database/migrations/005_practice_review.sql apps/api/src/practice.py
   apps/api/src/study_plan.py tests/unit/test_study_plan.py
+  apps/api/src/pdf.py tests/unit/test_pdf.py
   apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
   docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
   scripts/benchmark-knowledge.py
@@ -174,9 +175,9 @@ test -z "$tracked_storage" || { echo "FAIL conteúdo de storage rastreado" >&2; 
 
 secret_pattern='(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})'
 if command -v rg >/dev/null 2>&1; then
-  secret_scan=(rg --hidden --glob '!.git/**' --glob '!.env' --glob '!secrets/**' --glob '!.env.example' "$secret_pattern" .)
+  secret_scan=(rg --hidden --glob '!.git/**' --glob '!.env' --glob '!secrets/**' --glob '!.env.example' --glob '!.venv/**' --glob '!*.egg-info/**' "$secret_pattern" .)
 else
-  secret_scan=(grep -RInE --exclude-dir=.git --exclude=.env --exclude=.env.example --exclude-dir=secrets "$secret_pattern" .)
+  secret_scan=(grep -RInE --exclude-dir=.git --exclude-dir=.venv --exclude-dir='*.egg-info' --exclude=.env --exclude=.env.example --exclude-dir=secrets "$secret_pattern" .)
 fi
 if "${secret_scan[@]}"; then
   echo "FAIL possível segredo detectado" >&2

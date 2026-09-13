@@ -59,7 +59,7 @@ def _context(source):
     return {"user_id": u, "chat_id": c, "request_id": m}
 
 
-def _call(method, path, ctx, payload=None):
+def _call_bytes(method, path, ctx, payload=None) -> bytes:
     token = _secret(
         os.environ.get("MENTOR_API_SERVICE_TOKEN_FILE", "/run/mentor_api_service_token")
     )
@@ -114,20 +114,23 @@ def _call(method, path, ctx, payload=None):
                 headers=headers,
                 method=method,
             ),
-            timeout=12,
+            timeout=30,
         ) as r:
-            return json.loads(r.read())
+            return r.read()
     except (
         urllib.error.HTTPError,
         urllib.error.URLError,
         TimeoutError,
-        json.JSONDecodeError,
     ) as error:
         if isinstance(error, urllib.error.HTTPError):
             LOGGER.warning("mentor_api_request_failed status=%s", error.code)
         else:
             LOGGER.warning("mentor_api_request_failed class=%s", type(error).__name__)
         raise RuntimeError("operação acadêmica indisponível") from None
+
+
+def _call(method, path, ctx, payload=None):
+    return json.loads(_call_bytes(method, path, ctx, payload))
 
 
 def _format(cmd, result, key):
@@ -258,10 +261,10 @@ def install(module):
         # Hermes may expose the raw Telegram command with its leading slash.
         # Normalize only the command token; arguments remain untouched.
         command = (event.get_command() or "").lstrip("/").lower()
-        if (
-            command in COMMANDS
-            and getattr(getattr(event.source, "platform", None), "value", "") == "telegram"
-        ):
+        is_telegram = getattr(getattr(event.source, "platform", None), "value", "") == "telegram"
+        if command == "salvar" and is_telegram:
+            return await _handle_salvar(self, event)
+        if command in COMMANDS and is_telegram:
             return await dispatch(event, command)
         source = getattr(event, "source", None)
         is_telegram = getattr(getattr(source, "platform", None), "value", "") == "telegram"
@@ -280,6 +283,41 @@ def install(module):
             )
             return response
         return await original(self, event)
+
+    async def _handle_salvar(self, event):
+        source = event.source
+        try:
+            ctx = _context(source)
+            session_entry = await self.async_session_store.get_or_create_session(source)
+            export_data = await self._session_db.export_session(session_entry.session_id)
+            if not export_data:
+                return "Nenhuma mensagem encontrada nesta sessão para salvar."
+            from hermes_cli.session_export import render_session_for_save
+
+            markdown = render_session_for_save(export_data, "md")
+            pdf_bytes = _call_bytes(
+                "POST", "/api/v1/lessons/pdf", ctx,
+                {"title": "Aula — Mentor Concursos", "content": markdown},
+            )
+            import tempfile
+
+            pdf_path = os.path.join(tempfile.gettempdir(), f"aula_{ctx['user_id']}.pdf")
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+            adapter = getattr(self, "get_adapter", None)
+            if adapter is None:
+                return "Não foi possível enviar o documento."
+            adapter = adapter(source.platform)
+            await adapter.send_document(
+                chat_id=source.chat_id,
+                file_path=pdf_path,
+                caption="Aula em PDF",
+                file_name="aula.pdf",
+            )
+            return "Aula salva em PDF e enviada."
+        except Exception as error:  # noqa: BLE001
+            LOGGER.warning("salvar_pdf_failed class=%s", type(error).__name__)
+            return "Não foi possível salvar a aula em PDF."
 
     runner._handle_message = guarded
     INSTALLED = True
