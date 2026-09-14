@@ -36,6 +36,7 @@ required=(
   database/migrations/005_practice_review.sql apps/api/src/practice.py
   apps/api/src/study_plan.py tests/unit/test_study_plan.py
   apps/api/src/pdf.py tests/unit/test_pdf.py
+  apps/api/src/books.py
   apps/api/src/knowledge.py apps/embeddings/Dockerfile apps/embeddings/requirements-real.lock apps/embeddings/model-cpu.manifest.sha256 Dockerfile.validation.dockerignore docs/AUTONOMIA-OPERACIONAL.md
   docs/runbooks/EMBEDDINGS.md docs/adr/ADR-016-runtime-cpu-onnx.md
   scripts/benchmark-knowledge.py

@@ -12,6 +12,7 @@ dependencies = [
   "fpdf2==2.8.8",
   "psycopg[binary]==3.2.9",
   "pydantic-settings==2.10.1",
+  "python-multipart==0.0.32",
   "redis==6.4.0",
   "uvicorn[standard]==0.35.0",
 ]
