@@ -18,6 +18,15 @@ import uuid
 from contextlib import suppress
 
 from mentor_consultation_memory import context_for, record
+from study_plan_conversation import (
+    is_decline,
+    is_explicit_confirmation,
+    parse_availability,
+    parse_block,
+    parse_days,
+    parse_deadline,
+    should_offer,
+)
 
 COMMANDS = {
     "inicio",
@@ -36,8 +45,11 @@ COMMANDS = {
     "revisar",
     "erros",
     "desempenho",
+    "plano",
 }
 CURRENT = {}
+PLAN_FLOWS = {}
+PLAN_OFFERS = {}
 INSTALLED = False
 LOGGER = logging.getLogger("mentor.telegram_dispatcher")
 
@@ -149,14 +161,10 @@ def _format(cmd, result, key):
             # Keep compatibility with older payloads while never displaying a
             # placeholder when the canonical field is present.
             letter = a.get("option", a.get("letter", a.get("label", "?")))
-            lines.append(
-                f"{letter}) {a.get('text', '')}"
-                if isinstance(a, dict)
-                else str(a)
-            )
+            lines.append(f"{letter}) {a.get('text', '')}" if isinstance(a, dict) else str(a))
         return "\n".join(lines + ["", "Responda com /responder <letra>."])
     if cmd == "ajuda":
-        return "Comandos: /questao, /responder, /simulado, /revisar, /erros e /desempenho."
+        return "Comandos: /plano, /questao, /responder, /simulado, /revisar, /erros e /desempenho."
     if cmd == "responder":
         correct = bool(result.get("correct"))
         selected = str(result.get("selected_option") or "?").upper()
@@ -179,6 +187,196 @@ def _format(cmd, result, key):
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
 
 
+def _plan_summary(result):
+    simulation = result.get("simulation") or {}
+    period = simulation.get("period") or {}
+    total = int(simulation.get("total_capacity_minutes") or 0)
+    return (
+        f"Proposta de {period.get('calendar_days', 0)} dias, com "
+        f"{period.get('available_days', 0)} dias disponíveis e "
+        f"{total // 60}h{total % 60:02d} de capacidade. "
+        f"Serão {simulation.get('blocks', 0)} blocos.\n\n"
+        "Para criar, responda Confirmo. Para desistir, use /plano cancelar."
+    )
+
+
+def _format_plan_view(option, result):
+    if option == "hoje":
+        lines = [
+            f"Plano de hoje — {result.get('date', '')}",
+            f"Disponível: {result.get('capacity_minutes', 0)} min | "
+            f"Planejado: {result.get('planned_minutes', 0)} min",
+        ]
+        for item in result.get("items", [])[:8]:
+            topic = f" — {item['topic_name']}" if item.get("topic_name") else ""
+            lines.append(
+                f"• {item.get('subject_name', 'Disciplina')}{topic}: "
+                f"{item.get('activity_type')} ({item.get('planned_minutes')} min) — "
+                f"{item.get('status')}"
+            )
+        return "\n".join(lines) if result.get("items") else "Não há blocos planejados para hoje."
+    if option == "semana":
+        period = result.get("period") or {}
+        lines = [f"Plano da semana — {period.get('start_date')} a {period.get('end_date')}"]
+        for day in result.get("days", []):
+            lines.append(
+                f"• {day.get('date')}: {day.get('planned_minutes', 0)} min; "
+                f"{day.get('completed_minutes', 0)} concluídos; "
+                f"{day.get('pending', 0)} pendências"
+            )
+        return "\n".join(lines)
+    if result.get("state") == "no_active_plan":
+        return "Você ainda não possui plano ativo. Use /plano para criar."
+    goal = result.get("goal") or {}
+    return (
+        f"Plano ativo: {goal.get('name', 'objetivo')}\n"
+        f"Prazo: {goal.get('horizon', 'não informado')}\n"
+        f"Carga: {result.get('completed_minutes', 0)}/{result.get('total_minutes', 0)} min "
+        f"({result.get('progress_percent', 0)}%)\n"
+        f"Atrasadas: {result.get('overdue_items', 0)} | Próxima revisão: "
+        f"{result.get('next_review') or 'não agendada'}"
+    )
+
+
+async def _plan_command(event, ctx, key, args):
+    option = args.strip().lower()
+    if option == "hoje":
+        result = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/today", ctx)
+        return _format_plan_view(option, result)
+    if option == "semana":
+        result = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/week", ctx)
+        return _format_plan_view(option, result)
+    if option == "status":
+        result = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/status", ctx)
+        return _format_plan_view(option, result)
+    if option == "cancelar":
+        current = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/proposals/current", ctx)
+        proposal = current.get("proposal")
+        PLAN_FLOWS.pop(key, None)
+        if not proposal:
+            return "Não há proposta de plano pendente."
+        await asyncio.to_thread(
+            _call,
+            "POST",
+            f"/api/v1/study/plan/proposals/{proposal['id']}/cancel",
+            ctx,
+            {"cancel": True},
+        )
+        return "Proposta cancelada. Nenhum plano foi alterado."
+    current = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/proposals/current", ctx)
+    if current.get("state") == "pending" and current.get("proposal"):
+        proposal = current["proposal"]
+        PLAN_FLOWS[key] = {
+            "stage": "confirmation",
+            "proposal_id": proposal["id"],
+            "updated_at": time.time(),
+        }
+        return _plan_summary({"simulation": proposal.get("calculated_summary") or {}})
+    goals = (await asyncio.to_thread(_call, "GET", "/api/v1/goals", ctx)).get("items", [])
+    active = next((goal for goal in goals if goal.get("active")), None)
+    if option == "ajustar" and not active:
+        return "Você ainda não possui plano ativo para ajustar. Use /plano."
+    flow = {"stage": "deadline", "updated_at": time.time(), "replan": option == "ajustar"}
+    if active:
+        flow["goal_id"] = active["id"]
+    else:
+        exams = (await asyncio.to_thread(_call, "GET", "/api/v1/exams", ctx)).get("items", [])
+        if not exams:
+            return "Não há concurso cadastrado para montar o plano."
+        flow["stage"] = "exam"
+        flow["exams"] = exams[:10]
+        PLAN_FLOWS[key] = flow
+        lines = ["Para qual concurso deseja o plano?"]
+        lines.extend(
+            f"{index}. {exam.get('organization')} — {exam.get('role')}"
+            for index, exam in enumerate(flow["exams"], 1)
+        )
+        return "\n".join(lines)
+    PLAN_FLOWS[key] = flow
+    return "Quantos dias você possui ou qual é a data-limite? Ex.: 120 dias ou 20/12/2026."
+
+
+async def _plan_reply(event, ctx, key):
+    flow = PLAN_FLOWS.get(key)
+    if not flow:
+        return None
+    if time.time() - flow.get("updated_at", 0) > 1800:
+        PLAN_FLOWS.pop(key, None)
+        return "O fluxo do plano expirou. Use /plano para recomeçar."
+    text = str(getattr(event, "text", "") or "").strip()
+    if text.lower() in {"cancelar", "cancela", "parar"}:
+        PLAN_FLOWS.pop(key, None)
+        return "Criação do plano cancelada. Nenhuma alteração foi feita."
+    stage = flow["stage"]
+    flow["updated_at"] = time.time()
+    if stage == "exam":
+        try:
+            exam = flow["exams"][int(text) - 1]
+        except (ValueError, IndexError):
+            return "Responda somente com o número do concurso desejado."
+        flow["exam_id"] = exam["id"]
+        flow["stage"] = "deadline"
+        return "Quantos dias você possui ou qual é a data-limite? Ex.: 120 dias ou 20/12/2026."
+    if stage == "deadline":
+        from datetime import date
+
+        parsed = parse_deadline(text, date.today())
+        if not parsed:
+            return "Não entendi o prazo. Informe, por exemplo, 120 dias ou 20/12/2026."
+        flow.update(parsed)
+        flow["stage"] = "days"
+        return "Quais dias da semana estão disponíveis? Ex.: segunda a sábado; domingo livre."
+    if stage == "days":
+        days = parse_days(text)
+        if not days:
+            return "Informe pelo menos um dia disponível, por exemplo: segunda a sábado."
+        flow["days"] = days
+        flow["stage"] = "availability"
+        return "Quanto tempo você tem em cada dia? Ex.: 3h de segunda a sexta e 5h no sábado."
+    if stage == "availability":
+        availability = parse_availability(text, flow["days"])
+        if not availability:
+            return "Informe tempos entre 15 minutos e 16 horas, por exemplo: 2h30 por dia."
+        flow["availability"] = availability
+        flow["stage"] = "block"
+        return "Qual duração prefere para cada bloco? Ex.: 60 minutos."
+    if stage == "block":
+        block = parse_block(text)
+        if block is None:
+            return "Informe uma duração entre 15 minutos e 4 horas."
+        payload = {
+            key_name: flow[key_name]
+            for key_name in ("goal_id", "exam_id", "end_date", "total_days")
+            if flow.get(key_name) is not None
+        }
+        payload.update({"availability": flow["availability"], "preferred_block_minutes": block})
+        path = (
+            "/api/v1/study/plan/replan/proposals"
+            if flow.get("replan")
+            else "/api/v1/study/plan/proposals"
+        )
+        result = await asyncio.to_thread(_call, "POST", path, ctx, payload)
+        flow["proposal_id"] = result["proposal"]["id"]
+        flow["stage"] = "confirmation"
+        return _plan_summary(result)
+    if stage == "confirmation":
+        if not is_explicit_confirmation(text, single_pending=True):
+            return "Ainda não confirmei. Responda Confirmo para criar ou use /plano cancelar."
+        result = await asyncio.to_thread(
+            _call,
+            "POST",
+            f"/api/v1/study/plan/proposals/{flow['proposal_id']}/confirm",
+            ctx,
+            {"confirmation": "confirmo"},
+        )
+        PLAN_FLOWS.pop(key, None)
+        return (
+            f"Plano criado com {result.get('plan_items', 0)} blocos. "
+            "Para ver hoje, use /plano hoje."
+        )
+    return None
+
+
 async def dispatch(event, command):
     if command not in COMMANDS:
         return None
@@ -188,6 +386,8 @@ async def dispatch(event, command):
         args = (event.get_command_args() or "").strip()
         if command == "ajuda":
             return _format(command, {}, key)
+        if command == "plano":
+            return await _plan_command(event, ctx, key, args)
         if command == "questao":
             result = await asyncio.to_thread(_call, "POST", "/api/v1/practice/question", ctx, {})
         elif command == "perguntar":
@@ -310,6 +510,14 @@ def install(module):
         source = getattr(event, "source", None)
         is_telegram = getattr(getattr(source, "platform", None), "value", "") == "telegram"
         if is_telegram and not command:
+            try:
+                ctx = _context(source)
+                key = (ctx["user_id"], ctx["chat_id"])
+                planned = await _plan_reply(event, ctx, key)
+                if planned is not None:
+                    return planned
+            except (OSError, RuntimeError, ValueError):
+                return "Erro técnico temporário. Nenhuma operação acadêmica foi realizada."
             previous_context = context_for(source)
             if previous_context:
                 event.channel_context = previous_context
@@ -322,6 +530,23 @@ def install(module):
                 getattr(event, "text", ""),
                 response if isinstance(response, str) else None,
             )
+            text = str(getattr(event, "text", "") or "")
+            offer = PLAN_OFFERS.get(key, {})
+            if offer.get("offered_at") and is_decline(text):
+                offer["declined_at"] = time.time()
+                PLAN_OFFERS[key] = offer
+            if should_offer(text, offer.get("offered_at"), offer.get("declined_at")):
+                status = await asyncio.to_thread(_call, "GET", "/api/v1/study/plan/status", ctx)
+                if status.get("state") == "no_active_plan":
+                    exams = await asyncio.to_thread(_call, "GET", "/api/v1/exams", ctx)
+                    if exams.get("items"):
+                        offer["offered_at"] = time.time()
+                        PLAN_OFFERS[key] = offer
+                        suffix = (
+                            "Você ainda não possui um plano ativo. Posso montar um "
+                            "considerando seus dias e horários disponíveis? Use /plano."
+                        )
+                        return f"{response}\n\n{suffix}" if isinstance(response, str) else suffix
             return response
         return await original(self, event)
 
@@ -353,7 +578,9 @@ def install(module):
         try:
             title = _lesson_title(markdown)
             pdf_bytes = _call_bytes(
-                "POST", "/api/v1/lessons/pdf", ctx,
+                "POST",
+                "/api/v1/lessons/pdf",
+                ctx,
                 {"title": title, "content": markdown},
             )
         except Exception:  # noqa: BLE001

@@ -15,5 +15,21 @@ As sessões seguem `active -> paused -> active -> completed/cancelled` ou
 pausas. Objetivos, editais e ciclos ativos usam índices parciais no banco como
 segunda camada de proteção.
 
-Nesta fase não há endpoint de questões, conteúdo, RAG, ingestão ou comandos
-acadêmicos Telegram.
+## Planejador adaptativo
+
+- `POST /api/v1/study/plan/proposals`: simula e cria proposta temporária;
+- `GET /api/v1/study/plan/proposals/current`: consulta a proposta pendente;
+- `POST /api/v1/study/plan/proposals/{id}/confirm`: confirma e persiste;
+- `POST /api/v1/study/plan/proposals/{id}/cancel`: cancela somente a proposta;
+- `POST /api/v1/study/plan/replan/proposals`: simula revisão do plano existente;
+- `GET /api/v1/study/plan/today`: calendário do dia local do perfil;
+- `GET /api/v1/study/plan/week`: resumo de segunda a domingo;
+- `GET /api/v1/study/plan/status`: execução, atrasos e próxima revisão;
+- `GET /api/v1/study/next-item`: próximo item ainda planejado.
+
+`POST /api/v1/study/plan` permanece como adaptador do contrato antigo, mas por
+segurança agora devolve uma proposta pendente. Clientes devem migrar para o
+fluxo explícito de proposta e confirmação.
+
+O contrato completo do planejador e seus limites estão em
+`docs/12-PLANEJADOR-ADAPTATIVO.md`.

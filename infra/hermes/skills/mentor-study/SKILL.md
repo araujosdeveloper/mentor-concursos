@@ -49,7 +49,8 @@ modo conversacional genérico ou use conhecimento externo.
 - `/simulado <quantidade>`: `mentor_api.py simulado --quantity <quantidade>` (máximo 20).
 - `/revisar`: `mentor_api.py revisar`; `/erros`: `mentor_api.py erros`; `/desempenho`: `mentor_api.py desempenho`.
 - `/concursos`: `mentor_api.py concursos` — lista os concursos disponíveis.
-- `/plano`: cria o plano de estudo (veja "Plano de estudo" abaixo).
+- `/plano`: inicia simulação confirmável; também aceita `hoje`, `semana`,
+  `status`, `ajustar` e `cancelar`.
 - `/salvar`: exporta a conversa atual como PDF e envia o arquivo (gerenciado pelo gateway).
 
 Pergunta em linguagem natural pode usar `perguntar` quando for claramente uma
@@ -64,20 +65,16 @@ conversa curta, uma pergunta por vez, e só então crie o plano:
    (use o `id` do exame retornado).
 2. **Prazo**: pergunte a data da prova (`AAAA-MM-DD`). Se ele não souber, peça
    um prazo estimado.
-3. **Disponibilidade**: pergunte quantos dias por semana e quantas horas por
-   dia ele pode estudar.
+3. **Disponibilidade**: pergunte os dias e os minutos/horas específicos de cada
+   dia. Aceite, por exemplo, `2h30` e domingo livre.
 4. **Nível** (opcional): pergunte o ponto de partida (zero/intermediário/avançado)
    para ajustar o tom das aulas. Registre com
    `mentor_api.py perfil --level <beginner|intermediate|advanced>`.
 
-Com esses dados, chame:
-
-    mentor_api.py plano --exam-id <id> --deadline <AAAA-MM-DD> \
-      --days-per-week <n> --hours-per-day <n>
-
-Apresente o plano retornado (objetivo, total de semanas, minutos semanais) de
-forma clara e incentive a começar. Não invente números: use apenas o que a API
-retornar.
+O dispatcher cria somente uma proposta, apresenta período, capacidade e blocos
+e exige `confirmar`, `confirmo` ou `sim, criar plano`. `sim` isolado vale apenas
+quando existe exatamente uma proposta pendente no fluxo atual. Nunca persista
+antes dessa confirmação e nunca exponha UUID ou o snapshot JSON.
 
 ## Aula guiada
 

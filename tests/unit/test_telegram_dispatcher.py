@@ -164,3 +164,92 @@ def test_answer_retry_uses_same_idempotent_request_and_formats_again(monkeypatch
     second = asyncio.run(dispatcher.dispatch(Event(), "responder"))
     assert first == second
     assert len(calls) == 2
+
+
+def test_plan_today_is_short_and_hides_internal_ids() -> None:
+    dispatcher = _module()
+    rendered = dispatcher._format_plan_view(
+        "hoje",
+        {
+            "date": "2026-09-14",
+            "capacity_minutes": 150,
+            "planned_minutes": 60,
+            "items": [
+                {
+                    "id": "secret-uuid",
+                    "subject_name": "Português",
+                    "topic_name": "Crase",
+                    "activity_type": "study",
+                    "planned_minutes": 60,
+                    "status": "planned",
+                }
+            ],
+        },
+    )
+    assert "Português — Crase" in rendered
+    assert "secret-uuid" not in rendered
+
+
+def test_plan_confirmation_rejects_ambiguity_then_confirms(monkeypatch) -> None:
+    import asyncio
+
+    dispatcher = _module()
+    calls = []
+
+    def fake_call(method, path, _ctx, payload=None):
+        calls.append((method, path, payload))
+        return {"plan_items": 12}
+
+    monkeypatch.setattr(dispatcher, "_call", fake_call)
+
+    async def immediate(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(dispatcher.asyncio, "to_thread", immediate)
+    key = ("1", "1")
+    dispatcher.PLAN_FLOWS[key] = {
+        "stage": "confirmation",
+        "proposal_id": "internal",
+        "updated_at": dispatcher.time.time(),
+    }
+
+    class Event:
+        text = "talvez"
+
+    ctx = {"user_id": "1", "chat_id": "1", "request_id": "m1"}
+    assert "Ainda não confirmei" in asyncio.run(dispatcher._plan_reply(Event(), ctx, key))
+    assert calls == []
+    Event.text = "Confirmo"
+    assert "Plano criado" in asyncio.run(dispatcher._plan_reply(Event(), ctx, key))
+    assert calls[0][1].endswith("/confirm")
+
+
+def test_plan_command_resumes_persisted_proposal_after_restart(monkeypatch) -> None:
+    import asyncio
+
+    dispatcher = _module()
+
+    def fake_call(_method, path, _ctx, _payload=None):
+        assert path.endswith("/proposals/current")
+        return {
+            "state": "pending",
+            "proposal": {
+                "id": "internal",
+                "calculated_summary": {
+                    "period": {"calendar_days": 30, "available_days": 25},
+                    "total_capacity_minutes": 3000,
+                    "blocks": 50,
+                },
+            },
+        }
+
+    monkeypatch.setattr(dispatcher, "_call", fake_call)
+
+    async def immediate(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(dispatcher.asyncio, "to_thread", immediate)
+    key = ("1", "1")
+    result = asyncio.run(dispatcher._plan_command(None, {"user_id": "1", "chat_id": "1"}, key, ""))
+    assert "Proposta de 30 dias" in result
+    assert dispatcher.PLAN_FLOWS[key]["stage"] == "confirmation"

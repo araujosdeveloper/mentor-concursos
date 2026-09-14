@@ -22,6 +22,7 @@ quick_commands:
   revisar: {type: alias, target: "mentor-study /revisar"}
   erros: {type: alias, target: "mentor-study /erros"}
   desempenho: {type: alias, target: "mentor-study /desempenho"}
+  plano: {type: alias, target: "mentor-study /plano"}
 
 unauthorized_dm_behavior: pair
 

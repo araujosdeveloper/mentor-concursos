@@ -30,6 +30,10 @@ required=(
   database/migrations/006_official_source_refresh.sql apps/worker/src/source_refresh.py
   database/migrations/007_source_review_rbac.sql apps/api/src/knowledge_review.py
   database/migrations/008_user_level.sql
+  database/migrations/009_adaptive_study_plan.sql apps/api/src/study_plan_engine.py
+  tests/unit/test_adaptive_study_plan.py tests/unit/test_study_plan_conversation.py
+  tests/integration/verify-adaptive-plan-migration.sh docs/12-PLANEJADOR-ADAPTATIVO.md
+  docs/adr/ADR-021-proposta-plano-adaptativo.md infra/hermes/study_plan_conversation.py
   docs/adr/ADR-019-consolidacao-refresh-seguro.md scripts/set-user-role.py
   tests/unit/test_source_review.py tests/unit/test_worker_consumer.py
   tests/unit/test_set_user_role.py tests/integration/verify-migration-007.sh
