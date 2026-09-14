@@ -22,6 +22,10 @@ API autenticada.
 - `version` em objetivos, ciclos e sessões para concorrência otimista;
 - auditoria append-only para mutações;
 - `Idempotency-Key` com fingerprint impede repetição inconsistente.
+- uma proposta `draft` por usuário, com expiração e confirmação serializada;
+- calendário diário nunca excede a disponibilidade local do perfil;
+- replanejamento cancela logicamente somente itens futuros não iniciados;
+- ciclos e itens confirmados guardam proveniência da proposta e revisão.
 
 `topic_mastery` começa em `not_started`; somente serviço determinístico pode
 alterar evidências. IA não marca `consolidated` nesta fase.
