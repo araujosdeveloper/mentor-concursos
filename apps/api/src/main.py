@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .academic import router as academic_router
+from .books import router as books_router
 from .config import get_settings
 from .external import router as external_router
 from .health import router as health_router
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     application.include_router(practice_router)
     application.include_router(study_plan_router)
     application.include_router(pdf_router)
+    application.include_router(books_router)
 
     @application.exception_handler(Exception)
     async def unhandled_error(request: Request, _: Exception) -> JSONResponse:
